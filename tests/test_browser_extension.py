@@ -11,6 +11,7 @@ class BrowserExtensionTests(unittest.TestCase):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
 
         self.assertEqual(manifest["manifest_version"], 3)
+        self.assertEqual(manifest["version"], "0.1.1")
         self.assertEqual(set(manifest["permissions"]), {"sidePanel", "storage"})
         self.assertEqual(manifest["optional_host_permissions"], ["http://127.0.0.1/*"])
         self.assertNotIn("host_permissions", manifest)
@@ -30,6 +31,40 @@ class BrowserExtensionTests(unittest.TestCase):
         self.assertIn('credentials: "omit"', script)
         self.assertIn('redirect: "error"', script)
         self.assertIn("http://127.0.0.1/*", script)
+
+    def test_side_panel_copy_is_english_and_accessible(self):
+        page = (EXTENSION / "sidepanel.html").read_text(encoding="utf-8")
+        script = (EXTENSION / "sidepanel.js").read_text(encoding="utf-8")
+        manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
+        visible_copy = (page + script).lower()
+
+        self.assertIn('<html lang="en"', page)
+        self.assertIn('aria-live="polite"', page)
+        self.assertIn('<label for="dashboard-url">', page)
+        self.assertIn('class="visually-hidden" for="search"', page)
+        self.assertIn('aria-label="Display settings"', page)
+        self.assertIn('aria-label="Refresh dashboard"', page)
+        self.assertIn('new Intl.DateTimeFormat("en-GB"', script)
+        self.assertIn("SOURCE_STATUS_TITLES[source.status]", script)
+        self.assertNotIn("source.label", script)
+        self.assertIn("read-only dashboard alongside discord", manifest["description"].lower())
+
+        for dutch_phrase in (
+            "alleen-lezen",
+            "focus naast discord",
+            "verbind je lokale dashboard",
+            "zoek in je overzicht",
+            "jouw weergave",
+            "status onbekend",
+            "geen berichten gevonden",
+            "open origineel in discord",
+        ):
+            with self.subTest(dutch_phrase=dutch_phrase):
+                self.assertNotIn(dutch_phrase, visible_copy)
+
+        guide = (ROOT / "BROWSER-EXTENSION.md").read_text(encoding="utf-8").lower()
+        self.assertIn("# discord fix browser side panel", guide)
+        self.assertNotIn("de browserextensie", guide)
 
 
 if __name__ == "__main__":

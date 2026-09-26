@@ -81,6 +81,13 @@ Use a user-authorized real export, installed server bot and chosen AI provider t
 - Executable SHA-256: `829B18221C848B4E09270A02CE5E3E61D8865FE910656182D4AEEA4F48729BB6`. Authenticode: `NotSigned`.
 - The ChatGPT browser was not available for this task, and its separate browser environment could not reach the loopback preview. No tunnel or public hosting was created. The app's local browser button and packaged web asset were verified through the packaged smoke test; remote rendering and screen-reader acceptance remain unverified. No WCAG conformance claim is made.
 
+## English browser side panel — 26 September 2026
+
+- Extension version 0.1.1 presents its interface, controls, status messages, source-status labels, and dates in English. User-provided Discord message text, channel names, and author names remain unchanged.
+- The English setup guide is `BROWSER-EXTENSION.md`; the desktop app interface remains Dutch.
+- All 40 automated tests passed with `ResourceWarning` treated as an error. Ruff lint/format, JavaScript syntax, manifest JSON, and the packaged five-file extension archive were verified.
+- Browser-rendered visual acceptance remains unverified. The extension has not been loaded into the user's browser or published to an extension store.
+
 ## Browser side panel update — 26 September 2026
 
 - Added an unpacked Chrome/Edge Manifest V3 side panel that presents the local read-only dashboard alongside the current tab. It has no Discord host access, content script, tab-reading permission, Discord credential, or write route.

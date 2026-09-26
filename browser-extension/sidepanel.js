@@ -1,11 +1,22 @@
 const API_ORIGIN_PERMISSION = "http://127.0.0.1/*";
 const VIEW_TITLES = {
-  Overview: "Jouw overzicht",
-  "Important Now": "Nu belangrijk",
-  "Needs Reply": "Opvolgen",
-  Conversations: "Gesprekken",
+  Overview: "Your dashboard",
+  "Important Now": "Important",
+  "Needs Reply": "Needs reply",
+  Conversations: "Conversations",
   Later: "Later",
-  Everything: "Alles",
+  Everything: "Everything",
+};
+const SOURCE_STATUS_TITLES = {
+  synced: "Synced",
+  partial: "Partially synced",
+  imported: "Imported",
+  stale: "Stale",
+  pending: "Waiting to sync",
+  revoked: "Access revoked",
+  offline: "Offline",
+  error: "Error",
+  unknown: "Unknown status",
 };
 const DEFAULT_PREFERENCES = {
   theme: "system",
@@ -35,7 +46,12 @@ const state = {
 };
 
 function normalizeDashboardUrl(value) {
-  const url = new URL(value.trim());
+  let url;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new Error("Enter a valid dashboard URL.");
+  }
   const path = url.pathname.split("/").filter(Boolean);
   if (
     url.protocol !== "http:" ||
@@ -48,7 +64,7 @@ function normalizeDashboardUrl(value) {
     path.length !== 1 ||
     !/^[A-Za-z0-9_-]{20,}$/.test(path[0])
   ) {
-    throw new Error("Plak de volledige Discord Fix-link met 127.0.0.1 en de geheime padcode.");
+    throw new Error("Paste the full Discord Fix link with 127.0.0.1 and its secret path.");
   }
   return `${url.origin}/${path[0]}/`;
 }
@@ -77,7 +93,7 @@ function formatDate(value) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("nl-NL", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 
 function safeDiscordUrl(value) {
@@ -105,7 +121,7 @@ function renderItems(items) {
   if (!items.length) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
-    empty.textContent = "Geen berichten gevonden in deze weergave.";
+    empty.textContent = "No messages found in this view.";
     ui.items.append(empty);
     return;
   }
@@ -117,7 +133,7 @@ function renderItems(items) {
     heading.className = "item-heading";
     const channel = document.createElement("strong");
     channel.className = "item-channel";
-    channel.textContent = item.channel_name || "Discord-gesprek";
+    channel.textContent = item.channel_name || "Discord conversation";
     heading.append(channel);
     const timestamp = document.createElement("time");
     timestamp.className = "item-time";
@@ -140,8 +156,8 @@ function renderItems(items) {
 
     const tags = document.createElement("div");
     tags.className = "item-tags";
-    if (item.important) addTag(tags, "Belangrijk", "tag-important");
-    if (item.reply) addTag(tags, "Opvolgen", "tag-reply");
+    if (item.important) addTag(tags, "Important", "tag-important");
+    if (item.reply) addTag(tags, "Needs reply", "tag-reply");
     if (item.state === "later") addTag(tags, "Later", "tag-later");
     if (tags.childElementCount) article.append(tags);
 
@@ -152,7 +168,7 @@ function renderItems(items) {
       anchor.href = link;
       anchor.target = "_blank";
       anchor.rel = "noopener noreferrer";
-      anchor.textContent = "Open origineel in Discord";
+      anchor.textContent = "Open original in Discord";
       article.append(anchor);
     }
     ui.items.append(article);
@@ -166,11 +182,11 @@ function renderSources(sources) {
     row.className = "source-row";
     const name = document.createElement("span");
     name.className = "source-name";
-    name.textContent = source.name || "Bron";
+    name.textContent = source.name || "Source";
     const status = document.createElement("span");
     status.className = "source-state";
     status.dataset.status = source.status || "unknown";
-    status.textContent = source.label || "Status onbekend";
+    status.textContent = SOURCE_STATUS_TITLES[source.status] || SOURCE_STATUS_TITLES.unknown;
     row.append(name, status);
     ui["source-list"].append(row);
   }
@@ -193,7 +209,7 @@ async function loadDashboard() {
   }
   state.loading = true;
   ui.refresh.disabled = true;
-  setStatus("Overzicht vernieuwen…");
+  setStatus("Refreshing dashboard…");
   const query = new URLSearchParams({ view: state.view, q: ui.search.value.trim() });
   try {
     const response = await fetch(`${state.baseUrl}api/dashboard?${query}`, {
@@ -203,11 +219,11 @@ async function loadDashboard() {
       signal: AbortSignal.timeout(10000),
     });
     if (!response.ok) throw new Error(response.status === 404
-      ? "De lokale koppeling is verlopen. Open Browserdashboard opnieuw en verbind met de nieuwe URL."
-      : "De lokale Discord Fix-server kan het overzicht nu niet leveren.");
+      ? "The local link has expired. Open Browserdashboard again in Discord Fix and connect with the new URL."
+      : "The local Discord Fix server cannot provide the dashboard right now.");
     const data = await response.json();
     if (!data || !Array.isArray(data.items) || !data.counts || !Array.isArray(data.sources)) {
-      throw new Error("De lokale server gaf geen herkenbaar Discord Fix-overzicht terug.");
+      throw new Error("The local server returned an unrecognized Discord Fix dashboard.");
     }
     renderItems(data.items);
     renderSources(data.sources);
@@ -215,15 +231,15 @@ async function loadDashboard() {
     ui["count-reply"].textContent = String(Number(data.counts.reply) || 0);
     ui["count-later"].textContent = String(Number(data.counts.later) || 0);
     const total = Array.isArray(data.items) ? data.items.length : 0;
-    ui["result-count"].textContent = `${total} ${total === 1 ? "bericht" : "berichten"}`;
+    ui["result-count"].textContent = `${total} ${total === 1 ? "message" : "messages"}`;
     const generated = formatDate(data.generated_at);
-    setStatus(generated ? `Bijgewerkt ${generated}` : "Overzicht bijgewerkt.");
+    setStatus(generated ? `Updated ${generated}` : "Dashboard updated.");
   } catch (error) {
     const message = error.name === "TimeoutError"
-      ? "De lokale Discord Fix-server reageert niet op tijd."
+      ? "The local Discord Fix server did not respond in time."
       : error.name === "TypeError"
-        ? "Geen verbinding. Controleer of Discord Fix openstaat en de lokale koppeling klopt."
-        : error.message || "Het overzicht kon niet worden geladen.";
+        ? "No connection. Check that Discord Fix is open and your local link is correct."
+        : error.message || "Could not load the dashboard.";
     setStatus(message, "error");
   } finally {
     state.loading = false;
@@ -264,7 +280,7 @@ async function initialize() {
         return;
       }
       ui["dashboard-url"].value = state.baseUrl;
-      setStatus("Lokale toegang is ingetrokken. Verbind opnieuw om toestemming te geven.");
+      setStatus("Local access was revoked. Connect again to grant access.");
       ui.status.dataset.state = "error";
     } catch {
       await chrome.storage.local.remove("dashboardUrl");
@@ -274,7 +290,7 @@ async function initialize() {
   ui.dashboard.hidden = true;
   ui["settings-toggle"].hidden = true;
   ui.refresh.hidden = true;
-  if (!ui.status.textContent) setStatus("Nog niet verbonden met Discord Fix.");
+  if (!ui.status.textContent) setStatus("Not connected to Discord Fix.");
 }
 
 ui["connection-form"].addEventListener("submit", async (event) => {
@@ -282,15 +298,20 @@ ui["connection-form"].addEventListener("submit", async (event) => {
   const input = ui["dashboard-url"].value;
   try {
     const baseUrl = normalizeDashboardUrl(input);
-    const granted = await chrome.permissions.request({ origins: [API_ORIGIN_PERMISSION] });
-    if (!granted) throw new Error("Toegang tot de lokale Discord Fix-server is niet verleend.");
+    let granted;
+    try {
+      granted = await chrome.permissions.request({ origins: [API_ORIGIN_PERMISSION] });
+    } catch {
+      throw new Error("The browser could not request access to the local dashboard.");
+    }
+    if (!granted) throw new Error("Access to the local Discord Fix server was not granted.");
     await chrome.storage.local.set({ dashboardUrl: baseUrl });
     state.baseUrl = baseUrl;
     showConnected();
   } catch (error) {
     ui.connection.classList.add("connection-error");
     const paragraph = ui.connection.querySelector(".connection-help");
-    paragraph.textContent = error.message || "De URL kon niet worden gevalideerd.";
+    paragraph.textContent = error.message || "Could not validate the URL.";
     paragraph.classList.add("connection-error");
   }
 });
@@ -356,14 +377,14 @@ ui.disconnect.addEventListener("click", async () => {
   ui.refresh.hidden = true;
   ui.connection.classList.remove("connection-error");
   ui.connection.querySelector(".connection-help").textContent =
-    "De extensie vraagt pas bij verbinden toegang tot de lokale Discord Fix-server. Hij leest geen Discord-tabbladen.";
+    "The extension requests access to the local Discord Fix server only when you connect. It does not read Discord tabs.";
   ui.connection.querySelector(".connection-help").classList.remove("connection-error");
   ui.connection.hidden = false;
   ui.dashboard.hidden = true;
   ui["settings-toggle"].hidden = true;
   ui.refresh.hidden = true;
   ui["dashboard-url"].value = "";
-  setStatus("Verbinding gewist.");
+  setStatus("Connection cleared.");
 });
 
 matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
@@ -373,5 +394,5 @@ matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
 initialize().catch(() => {
   ui.connection.hidden = false;
   ui.dashboard.hidden = true;
-  setStatus("De browserinstellingen konden niet worden gelezen.", "error");
+  setStatus("Could not read browser extension settings.", "error");
 });

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl" data-theme="dark" data-density="comfortable">
+<html lang="en" data-theme="dark" data-density="comfortable">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,74 +10,74 @@
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#top" aria-label="Discord Fix overzicht">
+      <a class="brand" href="#top" aria-label="Discord Fix dashboard">
         <span class="brand-mark" aria-hidden="true">D</span>
-        <span class="brand-copy"><strong>Discord Fix</strong><span>Focus naast Discord</span></span>
+        <span class="brand-copy"><strong>Discord Fix</strong><span>Focus alongside Discord</span></span>
       </a>
       <div class="top-actions">
-        <button class="icon-button" id="settings-toggle" type="button" aria-expanded="false" aria-controls="preferences" aria-label="Weergave-instellingen" hidden>
+        <button class="icon-button" id="settings-toggle" type="button" aria-expanded="false" aria-controls="preferences" aria-label="Display settings" hidden>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" stroke="currentColor" stroke-width="1.7"/><path d="m19.2 13.6 1.2.9-1.2 2.1-1.4-.5a7.8 7.8 0 0 1-1.4.8l-.2 1.5h-2.4l-.3-1.5a7.8 7.8 0 0 1-1.5-.1l-.9 1.2-2.1-1.2.5-1.4a7.8 7.8 0 0 1-.8-1.4l-1.5-.2v-2.4l1.5-.3a7.8 7.8 0 0 1 .1-1.5l-1.2-.9 1.2-2.1 1.4.5a7.8 7.8 0 0 1 1.4-.8l.2-1.5h2.4l.3 1.5a7.8 7.8 0 0 1 1.5.1l.9-1.2 2.1 1.2-.5 1.4a7.8 7.8 0 0 1 .8 1.4l1.5.2v2.4l-1.5.3a7.8 7.8 0 0 1-.1 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
         </button>
-        <button class="icon-button" id="refresh" type="button" aria-label="Overzicht vernieuwen" title="Vernieuwen" hidden>
+        <button class="icon-button" id="refresh" type="button" aria-label="Refresh dashboard" title="Refresh" hidden>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 7v5h-5M4.8 9a7.5 7.5 0 0 1 13-2L20 12M4 17v-5h5m10.2 3a7.5 7.5 0 0 1-13 2L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
     </header>
 
     <main id="top">
-      <p id="privacy-note" class="privacy-note">Alleen-lezen · opgeslagen op dit apparaat · Discord blijft ongewijzigd</p>
+      <p id="privacy-note" class="privacy-note">Read-only · stored on this device · Discord stays unchanged</p>
 
       <section id="connection" class="connection" aria-labelledby="connection-title">
-        <h1 id="connection-title">Verbind je lokale dashboard</h1>
-        <p>Open in Discord Fix <strong>Browserdashboard</strong>. Kopieer het adres uit de adresbalk en plak het hier. De verbinding blijft op deze computer.</p>
+        <h1 id="connection-title">Connect your local dashboard</h1>
+        <p>In the Discord Fix desktop app, open <strong>Browserdashboard</strong> (the Dutch “Browser dashboard” option). Copy the address from your browser and paste it here. The connection stays on this computer.</p>
         <form id="connection-form" novalidate>
-          <label for="dashboard-url">Lokale dashboard-URL</label>
+          <label for="dashboard-url">Local dashboard URL</label>
           <input id="dashboard-url" name="dashboard-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:…/…/" required>
-          <button class="primary-button" type="submit">Verbinden</button>
+          <button class="primary-button" type="submit">Connect</button>
         </form>
-        <p class="connection-help">De extensie vraagt pas bij verbinden toegang tot de lokale Discord Fix-server. Hij leest geen Discord-tabbladen.</p>
+        <p class="connection-help">The extension requests access to the local Discord Fix server only when you connect. It does not read Discord tabs.</p>
       </section>
 
       <section id="dashboard" hidden aria-label="Discord Fix dashboard">
         <section id="preferences" class="preferences" hidden aria-labelledby="preferences-title">
-          <div class="preferences-heading"><h2 id="preferences-title">Jouw weergave</h2><button id="disconnect" class="text-button" type="button">Verbinding wissen</button></div>
-          <label class="setting-row" for="theme"><span><strong>Thema</strong><small>Alleen de zijbalk</small></span>
-            <select id="theme"><option value="dark">Donker</option><option value="light">Licht</option><option value="system">Systeem</option></select>
+          <div class="preferences-heading"><h2 id="preferences-title">Display settings</h2><button id="disconnect" class="text-button" type="button">Clear connection</button></div>
+          <label class="setting-row" for="theme"><span><strong>Theme</strong><small>Side panel only</small></span>
+            <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select>
           </label>
-          <label class="setting-row" for="density"><span><strong>Regelafstand</strong><small>Ruimte per bericht</small></span>
-            <select id="density"><option value="comfortable">Ruim</option><option value="compact">Compact</option></select>
+          <label class="setting-row" for="density"><span><strong>Row spacing</strong><small>Space around each message</small></span>
+            <select id="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select>
           </label>
-          <label class="setting-row checkbox-row" for="show-counts"><span><strong>Prioriteiten tonen</strong><small>Tellers bovenaan</small></span><input id="show-counts" type="checkbox"></label>
-          <label class="setting-row checkbox-row" for="show-sources"><span><strong>Bronstatus tonen</strong><small>Beschikbaarheid van gekoppelde bronnen</small></span><input id="show-sources" type="checkbox"></label>
+          <label class="setting-row checkbox-row" for="show-counts"><span><strong>Show priority counts</strong><small>Counts at the top</small></span><input id="show-counts" type="checkbox"></label>
+          <label class="setting-row checkbox-row" for="show-sources"><span><strong>Show source status</strong><small>Availability of connected sources</small></span><input id="show-sources" type="checkbox"></label>
         </section>
 
-        <section id="counts" class="counts" aria-label="Tellers" hidden>
-          <div><strong id="count-important">0</strong><span>Belangrijk</span></div>
-          <div><strong id="count-reply">0</strong><span>Opvolgen</span></div>
+        <section id="counts" class="counts" aria-label="Priority counts" hidden>
+          <div><strong id="count-important">0</strong><span>Important</span></div>
+          <div><strong id="count-reply">0</strong><span>Needs reply</span></div>
           <div><strong id="count-later">0</strong><span>Later</span></div>
         </section>
 
-        <nav class="views" aria-label="Dashboardweergave">
-          <button type="button" data-view="Overview" aria-pressed="true">Overzicht</button>
-          <button type="button" data-view="Important Now" aria-pressed="false">Nu</button>
-          <button type="button" data-view="Needs Reply" aria-pressed="false">Opvolgen</button>
-          <button type="button" data-view="Conversations" aria-pressed="false">Gesprekken</button>
+        <nav class="views" aria-label="Dashboard views">
+          <button type="button" data-view="Overview" aria-pressed="true">Overview</button>
+          <button type="button" data-view="Important Now" aria-pressed="false">Important</button>
+          <button type="button" data-view="Needs Reply" aria-pressed="false">Needs reply</button>
+          <button type="button" data-view="Conversations" aria-pressed="false">Conversations</button>
           <button type="button" data-view="Later" aria-pressed="false">Later</button>
-          <button type="button" data-view="Everything" aria-pressed="false">Alles</button>
+          <button type="button" data-view="Everything" aria-pressed="false">Everything</button>
         </nav>
 
         <form id="search-form" class="search" role="search">
-          <label class="visually-hidden" for="search">Zoek in je overzicht</label>
+          <label class="visually-hidden" for="search">Search your dashboard</label>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-          <input id="search" type="search" maxlength="160" placeholder="Zoek in je overzicht">
-          <button id="clear-search" type="button" aria-label="Zoekopdracht wissen" hidden>×</button>
+          <input id="search" type="search" maxlength="160" placeholder="Search your dashboard">
+          <button id="clear-search" type="button" aria-label="Clear search" hidden>×</button>
         </form>
 
-        <div class="section-heading"><h1 id="view-title">Jouw overzicht</h1><span id="result-count" class="result-count"></span></div>
-        <p id="status" class="status" role="status" aria-live="polite">Verbinding maken…</p>
-        <section id="items" class="items" aria-label="Berichten"></section>
+        <div class="section-heading"><h1 id="view-title">Your dashboard</h1><span id="result-count" class="result-count"></span></div>
+        <p id="status" class="status" role="status" aria-live="polite">Connecting…</p>
+        <section id="items" class="items" aria-label="Messages"></section>
         <details id="sources" class="sources" hidden>
-          <summary>Bronstatus <span id="source-count"></span></summary>
+          <summary>Source status <span id="source-count"></span></summary>
           <ul id="source-list"></ul>
         </details>
       </section>

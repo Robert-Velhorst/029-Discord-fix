@@ -2,7 +2,7 @@
 
 Discord Fix is a Windows-first companion that helps people make sense of Discord information they are authorized to access. It brings available messages, follow-ups, and context into a calmer dashboard with clear source links.
 
-> **Current release: 0.4 development build.** This is a local development release, not a published or signed product. It includes a Windows desktop app, a local read-only browser dashboard, and an optional Chrome/Edge side panel. The current app and extension controls are in Dutch.
+> **Current release: 0.4 development build.** This is a local development release, not a published or signed product. It includes a Windows desktop app, a local read-only browser dashboard, and an optional Chrome/Edge side panel. The desktop app is currently in Dutch; the browser extension interface is in English.
 
 ## What Discord Fix does
 
@@ -54,7 +54,7 @@ To create a ZIP of the extension files, run `Package-Browser-Extension.ps1`. Thi
 
 **Choose summary processing.** Extractive summaries work locally without a model. Optional local Ollama or an explicitly configured external compatible provider can be selected in settings. External processing sends the selected message text and associated context to that provider; review its data handling and costs before enabling it. Discord Fix does not automatically send replies or take external actions based on AI output.
 
-See the [Windows user guide](USER-GUIDE.nl.md) and [browser extension guide](BROWSER-EXTENSION.nl.md) for detailed setup steps. These guides are currently in Dutch. The [development and verification notes](DEVELOPMENT.md) and [product specification](PRODUCT-SPECIFICATION.md) are in English.
+See the [Windows user guide — Dutch](USER-GUIDE.nl.md) and the [browser extension guide — English](BROWSER-EXTENSION.md) for detailed setup steps. The [development and verification notes](DEVELOPMENT.md) and [product specification](PRODUCT-SPECIFICATION.md) are also in English.
 
 ## Privacy and access boundaries
 
@@ -103,4 +103,4 @@ The project also contains a GitHub Actions workflow at `.github/workflows/test.y
 - [Product specification and longer-term requirements](PRODUCT-SPECIFICATION.md)
 - [Development and verification notes](DEVELOPMENT.md)
 - [Windows user guide — Dutch](USER-GUIDE.nl.md)
-- [Browser extension guide — Dutch](BROWSER-EXTENSION.nl.md)
+- [Browser extension guide — English](BROWSER-EXTENSION.md)

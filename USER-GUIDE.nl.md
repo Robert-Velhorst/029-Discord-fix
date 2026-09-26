@@ -12,7 +12,7 @@ De inbox start leeg. Er worden geen accounts verbonden, berichten verzonden of b
 
 Kies **Browserdashboard** in Discord Fix om een dashboard in je browser te openen. De server luistert alleen op deze computer, gebruikt een tijdelijke geheime link en toont de bestaande lokale gegevens. De pagina is alleen-lezen en ververst automatisch ongeveer iedere 15 seconden. Sluit Discord Fix om de lokale dashboardsessie te stoppen. Deze pagina verbindt zelf niet met Discord en stuurt geen gegevens naar een andere dienst.
 
-Voor een apart paneel naast Discord in Chrome of Edge kun je de lokale ontwikkelversie van de [browserextensie](BROWSER-EXTENSION.nl.md) laden. Die wijzigt de Discord-pagina niet en vraagt alleen lokale toegang om dit dashboard op te halen.
+Voor een apart paneel naast Discord in Chrome of Edge kun je de lokale ontwikkelversie van de [browserextensie](BROWSER-EXTENSION.md) laden. De installatiehandleiding is Engels. De extensie wijzigt de Discord-pagina niet en vraagt alleen lokale toegang om dit dashboard op te halen.
 
 ## Je eigen export importeren
 
