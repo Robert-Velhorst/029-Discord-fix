@@ -31,7 +31,7 @@ const ui = Object.fromEntries(
     "preferences", "settings-toggle", "disconnect", "theme", "density", "show-counts",
     "show-sources", "counts", "count-important", "count-reply", "count-later", "search-form",
     "search", "clear-search", "view-title", "result-count", "status", "items", "sources",
-    "source-count", "source-list", "refresh",
+    "source-count", "source-list", "refresh", "connect", "connection-error", "change-connection",
   ].map((id) => [id, document.getElementById(id)]),
 );
 
@@ -41,9 +41,18 @@ const state = {
   preferences: { ...DEFAULT_PREFERENCES },
   searchTimer: 0,
   refreshTimer: 0,
-  loading: false,
-  refreshPending: false,
+  requestId: 0,
+  controller: null,
 };
+
+function normalizePreferences(value = {}) {
+  return {
+    theme: ["system", "dark", "light"].includes(value?.theme) ? value.theme : "system",
+    density: ["comfortable", "compact"].includes(value?.density) ? value.density : "comfortable",
+    showCounts: typeof value?.showCounts === "boolean" ? value.showCounts : true,
+    showSources: typeof value?.showSources === "boolean" ? value.showSources : false,
+  };
+}
 
 function normalizeDashboardUrl(value) {
   let url;
@@ -86,7 +95,7 @@ function applyPreferences() {
   ui["show-counts"].checked = showCounts;
   ui["show-sources"].checked = showSources;
   ui.counts.hidden = !showCounts;
-  ui.sources.hidden = !showSources;
+  ui.sources.hidden = !showSources || !ui["source-list"].childElementCount;
 }
 
 function formatDate(value) {
@@ -100,7 +109,9 @@ function safeDiscordUrl(value) {
   if (typeof value !== "string") return "";
   try {
     const url = new URL(value);
-    if (url.protocol === "https:" && url.hostname === "discord.com" && url.pathname.startsWith("/channels/")) {
+    if (url.protocol === "https:" && url.hostname === "discord.com" &&
+        !url.username && !url.password && !url.port && !url.search && !url.hash &&
+        /^\/channels\/\d+\/\d+\/\d+$/.test(url.pathname)) {
       return url.href;
     }
   } catch {
@@ -151,14 +162,23 @@ function renderItems(items) {
 
     const content = document.createElement("p");
     content.className = "item-content";
-    content.textContent = typeof item.content === "string" ? item.content : "";
+    content.textContent = item.deleted ? "Deleted at the source" :
+      typeof item.content === "string" ? item.content : "";
     article.append(content);
 
     const tags = document.createElement("div");
     tags.className = "item-tags";
-    if (item.important) addTag(tags, "Important", "tag-important");
-    if (item.reply) addTag(tags, "Needs reply", "tag-reply");
-    if (item.state === "later") addTag(tags, "Later", "tag-later");
+    if (!item.deleted) {
+      if (item.state === "complete") addTag(tags, "Completed", "tag-complete");
+      else if (item.state === "dismissed") addTag(tags, "Dismissed", "tag-dismissed");
+      else if (item.state === "later") addTag(tags, "Later", "tag-later");
+      else {
+        if (item.important) addTag(tags, "Important", "tag-important");
+        if (item.reply) addTag(tags, "Needs reply", "tag-reply");
+      }
+      const deadline = formatDate(item.deadline);
+      if (deadline) addTag(tags, `Due ${deadline}`, "tag-deadline");
+    }
     if (tags.childElementCount) article.append(tags);
 
     const link = safeDiscordUrl(item.url);
@@ -186,7 +206,10 @@ function renderSources(sources) {
     const status = document.createElement("span");
     status.className = "source-state";
     status.dataset.status = source.status || "unknown";
-    status.textContent = SOURCE_STATUS_TITLES[source.status] || SOURCE_STATUS_TITLES.unknown;
+    status.textContent = Object.hasOwn(SOURCE_STATUS_TITLES, source.status)
+      ? SOURCE_STATUS_TITLES[source.status] : SOURCE_STATUS_TITLES.unknown;
+    const lastSync = formatDate(source.last_sync);
+    if (lastSync) status.title = `Last synced ${lastSync}`;
     row.append(name, status);
     ui["source-list"].append(row);
   }
@@ -203,25 +226,34 @@ function updateViewControls() {
 
 async function loadDashboard() {
   if (!state.baseUrl) return;
-  if (state.loading) {
-    state.refreshPending = true;
-    return;
-  }
-  state.loading = true;
+  state.controller?.abort();
+  const controller = new AbortController();
+  state.controller = controller;
+  const requestId = ++state.requestId;
+  const baseUrl = state.baseUrl;
+  const view = state.view;
+  const search = ui.search.value.trim();
+  const isCurrent = () => requestId === state.requestId && baseUrl === state.baseUrl &&
+    view === state.view && search === ui.search.value.trim();
+  const timeout = window.setTimeout(() => controller.abort(), 10000);
   ui.refresh.disabled = true;
+  ui.items.replaceChildren();
+  ui["result-count"].textContent = "";
+  ui.items.setAttribute("aria-busy", "true");
   setStatus("Refreshing dashboard…");
-  const query = new URLSearchParams({ view: state.view, q: ui.search.value.trim() });
+  const query = new URLSearchParams({ view, q: search });
   try {
-    const response = await fetch(`${state.baseUrl}api/dashboard?${query}`, {
+    const response = await fetch(`${baseUrl}api/dashboard?${query}`, {
       cache: "no-store",
       credentials: "omit",
       redirect: "error",
-      signal: AbortSignal.timeout(10000),
+      signal: controller.signal,
     });
     if (!response.ok) throw new Error(response.status === 404
       ? "The local link has expired. Open Browserdashboard again in Discord Fix and connect with the new URL."
       : "The local Discord Fix server cannot provide the dashboard right now.");
     const data = await response.json();
+    if (!isCurrent()) return;
     if (!data || !Array.isArray(data.items) || !data.counts || !Array.isArray(data.sources)) {
       throw new Error("The local server returned an unrecognized Discord Fix dashboard.");
     }
@@ -231,22 +263,29 @@ async function loadDashboard() {
     ui["count-reply"].textContent = String(Number(data.counts.reply) || 0);
     ui["count-later"].textContent = String(Number(data.counts.later) || 0);
     const total = Array.isArray(data.items) ? data.items.length : 0;
-    ui["result-count"].textContent = `${total} ${total === 1 ? "message" : "messages"}`;
+    ui["result-count"].textContent = total === 60 ? "Showing first 60 messages" :
+      `${total} ${total === 1 ? "message" : "messages"}`;
     const generated = formatDate(data.generated_at);
     setStatus(generated ? `Updated ${generated}` : "Dashboard updated.");
   } catch (error) {
-    const message = error.name === "TimeoutError"
+    if (!isCurrent()) return;
+    ui["source-list"].replaceChildren();
+    ui.sources.hidden = true;
+    for (const id of ["count-important", "count-reply", "count-later"]) ui[id].textContent = "—";
+    const message = controller.signal.aborted
       ? "The local Discord Fix server did not respond in time."
       : error.name === "TypeError"
         ? "No connection. Check that Discord Fix is open and your local link is correct."
-        : error.message || "Could not load the dashboard.";
+        : error.name === "SyntaxError"
+          ? "The local server returned an unrecognized Discord Fix dashboard."
+          : error.message || "Could not load the dashboard.";
     setStatus(message, "error");
   } finally {
-    state.loading = false;
-    ui.refresh.disabled = false;
-    if (state.refreshPending) {
-      state.refreshPending = false;
-      loadDashboard();
+    window.clearTimeout(timeout);
+    if (requestId === state.requestId) {
+      state.controller = null;
+      ui.refresh.disabled = false;
+      ui.items.setAttribute("aria-busy", "false");
     }
   }
 }
@@ -266,8 +305,8 @@ async function initialize() {
   const stored = await chrome.storage.local.get([
     "dashboardUrl", "preferences", "view",
   ]);
-  state.preferences = { ...DEFAULT_PREFERENCES, ...(stored.preferences || {}) };
-  state.view = VIEW_TITLES[stored.view] ? stored.view : "Overview";
+  state.preferences = normalizePreferences(stored.preferences);
+  state.view = Object.hasOwn(VIEW_TITLES, stored.view) ? stored.view : "Overview";
   applyPreferences();
   updateViewControls();
   const savedUrl = typeof stored.dashboardUrl === "string" ? stored.dashboardUrl : "";
@@ -280,9 +319,11 @@ async function initialize() {
         return;
       }
       ui["dashboard-url"].value = state.baseUrl;
+      state.baseUrl = "";
       setStatus("Local access was revoked. Connect again to grant access.");
       ui.status.dataset.state = "error";
     } catch {
+      state.baseUrl = "";
       await chrome.storage.local.remove("dashboardUrl");
     }
   }
@@ -290,14 +331,20 @@ async function initialize() {
   ui.dashboard.hidden = true;
   ui["settings-toggle"].hidden = true;
   ui.refresh.hidden = true;
-  if (!ui.status.textContent) setStatus("Not connected to Discord Fix.");
+  if (ui.status.dataset.state !== "error") setStatus("Not connected to Discord Fix.");
 }
 
 ui["connection-form"].addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (ui.connect.disabled) return;
+  ui.connect.disabled = true;
+  ui["connection-error"].hidden = true;
+  ui["dashboard-url"].removeAttribute("aria-invalid");
   const input = ui["dashboard-url"].value;
+  let validated = false;
   try {
     const baseUrl = normalizeDashboardUrl(input);
+    validated = true;
     let granted;
     try {
       granted = await chrome.permissions.request({ origins: [API_ORIGIN_PERMISSION] });
@@ -305,14 +352,22 @@ ui["connection-form"].addEventListener("submit", async (event) => {
       throw new Error("The browser could not request access to the local dashboard.");
     }
     if (!granted) throw new Error("Access to the local Discord Fix server was not granted.");
-    await chrome.storage.local.set({ dashboardUrl: baseUrl });
+    try {
+      await chrome.storage.local.set({ dashboardUrl: baseUrl });
+    } catch {
+      throw new Error("Could not save the connection in this browser. Try connecting again.");
+    }
     state.baseUrl = baseUrl;
     showConnected();
+    ui.search.focus();
   } catch (error) {
-    ui.connection.classList.add("connection-error");
-    const paragraph = ui.connection.querySelector(".connection-help");
+    const paragraph = ui["connection-error"];
     paragraph.textContent = error.message || "Could not validate the URL.";
-    paragraph.classList.add("connection-error");
+    paragraph.hidden = false;
+    if (!validated) ui["dashboard-url"].setAttribute("aria-invalid", "true");
+    ui["dashboard-url"].focus();
+  } finally {
+    ui.connect.disabled = false;
   }
 });
 
@@ -327,9 +382,13 @@ ui["refresh"].addEventListener("click", loadDashboard);
 document.querySelectorAll("[data-view]").forEach((button) => {
   button.addEventListener("click", async () => {
     state.view = button.dataset.view;
-    await chrome.storage.local.set({ view: state.view });
     updateViewControls();
     loadDashboard();
+    try {
+      await chrome.storage.local.set({ view: state.view });
+    } catch {
+      setStatus("This view could not be saved for next time.", "error");
+    }
   });
 });
 
@@ -358,41 +417,67 @@ async function savePreferences() {
     showCounts: ui["show-counts"].checked,
     showSources: ui["show-sources"].checked,
   };
-  await chrome.storage.local.set({ preferences: state.preferences });
   applyPreferences();
-  if (state.preferences.showSources && state.baseUrl) loadDashboard();
+  try {
+    await chrome.storage.local.set({ preferences: state.preferences });
+  } catch {
+    setStatus("Display settings apply now, but could not be saved for next time.", "error");
+  }
 }
 
 [ui.theme, ui.density, ui["show-counts"], ui["show-sources"]].forEach((control) => {
   control.addEventListener("change", savePreferences);
 });
 
-ui.disconnect.addEventListener("click", async () => {
+async function disconnect() {
+  ++state.requestId;
+  state.controller?.abort();
+  state.controller = null;
   state.baseUrl = "";
-  await chrome.storage.local.remove("dashboardUrl");
-  await chrome.permissions.remove({ origins: [API_ORIGIN_PERMISSION] });
+  window.clearTimeout(state.searchTimer);
+  ui.items.replaceChildren();
+  ui.items.setAttribute("aria-busy", "false");
+  ui["source-list"].replaceChildren();
+  ui.sources.hidden = true;
+  ui["source-count"].textContent = "";
+  ui["result-count"].textContent = "";
+  for (const id of ["count-important", "count-reply", "count-later"]) ui[id].textContent = "0";
+  ui.search.value = "";
+  ui["clear-search"].hidden = true;
   ui.preferences.hidden = true;
   ui["settings-toggle"].setAttribute("aria-expanded", "false");
   ui["settings-toggle"].hidden = true;
   ui.refresh.hidden = true;
-  ui.connection.classList.remove("connection-error");
-  ui.connection.querySelector(".connection-help").textContent =
-    "The extension requests access to the local Discord Fix server only when you connect. It does not read Discord tabs.";
-  ui.connection.querySelector(".connection-help").classList.remove("connection-error");
+  ui["connection-error"].hidden = true;
+  ui["dashboard-url"].removeAttribute("aria-invalid");
   ui.connection.hidden = false;
   ui.dashboard.hidden = true;
-  ui["settings-toggle"].hidden = true;
-  ui.refresh.hidden = true;
   ui["dashboard-url"].value = "";
-  setStatus("Connection cleared.");
-});
+  ui["dashboard-url"].focus();
+  ui.refresh.disabled = false;
+  ui.connect.disabled = true;
+  setStatus("Clearing connection…");
+  const results = await Promise.allSettled([
+    chrome.storage.local.remove("dashboardUrl"),
+    chrome.permissions.remove({ origins: [API_ORIGIN_PERMISSION] }),
+  ]);
+  ui.connect.disabled = false;
+  if (results.some((result) => result.status === "rejected")) {
+    setStatus("Disconnected for this session. The browser could not clear all saved access. " +
+      "Remove the extension's local-site access in browser settings before closing this panel.", "error");
+  } else setStatus("Connection cleared. Paste a new dashboard URL to reconnect.");
+}
+
+ui.disconnect.addEventListener("click", disconnect);
+ui["change-connection"].addEventListener("click", disconnect);
 
 matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
   if (state.preferences.theme === "system") applyPreferences();
 });
 
 initialize().catch(() => {
+  state.baseUrl = "";
   ui.connection.hidden = false;
   ui.dashboard.hidden = true;
   setStatus("Could not read browser extension settings.", "error");
-});
+}).finally(() => { ui.connect.disabled = false; });

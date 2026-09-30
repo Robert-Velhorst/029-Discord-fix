@@ -16,13 +16,17 @@ The extension has not been published to the Chrome Web Store or Microsoft Edge A
 4. Select **Load unpacked** and choose this repository's `browser-extension` folder.
 5. Open the Discord Fix side panel using the extension's toolbar icon. Paste the local dashboard URL, select **Connect**, and grant the requested local-site permission.
 
-The panel refreshes the dashboard about every 30 seconds while Discord Fix is running. If you close and later restart Discord Fix, select **Browserdashboard** again and connect using the new URL; the old URL expires when the app closes.
+The panel refreshes the dashboard about every 30 seconds while Discord Fix is running. If you close and later restart Discord Fix, select **Browserdashboard** again. In the panel, choose **Change connection**, then paste the new URL and connect; the old URL expires when the app closes. Connection failures appear above the dashboard, with **Refresh** available to retry.
 
 ## Use the side panel
 
 Choose among Overview, Important, Needs reply, Conversations, Later, and Everything. Search the information already available in Discord Fix. A message's **Open original in Discord** link opens that message in a new browser tab when a valid Discord link is available.
 
+Each snapshot shows up to 60 matching messages, with message previews limited to 420 characters. Narrow your search to find other messages and open the original to read the full text. Priority counts cover the local database, rather than just the visible search results. Completed, dismissed, deferred, and deleted messages have distinct English labels.
+
 Use **Display settings** to choose a dark, light, or system theme; comfortable or compact rows; priority counts; and source-status visibility. These preferences are stored in the browser's local extension storage. Source-status labels and dates are displayed in English. Message text, channel names, and author names remain as provided by their source.
+
+**Clear connection** and **Change connection** both clear the saved URL and revoke local-site permission. Displayed messages and search text are cleared immediately, including when a request is still running. If the browser cannot clear stored access, the panel explains how to remove it in browser settings. Display preferences remain saved.
 
 The side panel is read-only. Change priorities and follow-up states in the Discord Fix desktop app. Keep that app open while using the local dashboard.
 

@@ -26,19 +26,22 @@
 
     <main id="top">
       <p id="privacy-note" class="privacy-note">Read-only · stored on this device · Discord stays unchanged</p>
+      <p id="status" class="status" role="status" aria-live="polite">Loading settings…</p>
 
       <section id="connection" class="connection" aria-labelledby="connection-title">
         <h1 id="connection-title">Connect your local dashboard</h1>
         <p>In the Discord Fix desktop app, open <strong>Browserdashboard</strong> (the Dutch “Browser dashboard” option). Copy the address from your browser and paste it here. The connection stays on this computer.</p>
         <form id="connection-form" novalidate>
           <label for="dashboard-url">Local dashboard URL</label>
-          <input id="dashboard-url" name="dashboard-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:…/…/" required>
-          <button class="primary-button" type="submit">Connect</button>
+          <input id="dashboard-url" name="dashboard-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:…/…/" aria-describedby="connection-help connection-error" required>
+          <button id="connect" class="primary-button" type="submit" disabled>Connect</button>
         </form>
-        <p class="connection-help">The extension requests access to the local Discord Fix server only when you connect. It does not read Discord tabs.</p>
+        <p id="connection-help" class="connection-help">The extension requests access to the local Discord Fix server only when you connect. It does not read Discord tabs.</p>
+        <p id="connection-error" class="connection-error" role="alert" hidden></p>
       </section>
 
       <section id="dashboard" hidden aria-label="Discord Fix dashboard">
+        <button id="change-connection" class="text-button" type="button">Change connection</button>
         <section id="preferences" class="preferences" hidden aria-labelledby="preferences-title">
           <div class="preferences-heading"><h2 id="preferences-title">Display settings</h2><button id="disconnect" class="text-button" type="button">Clear connection</button></div>
           <label class="setting-row" for="theme"><span><strong>Theme</strong><small>Side panel only</small></span>
@@ -74,7 +77,6 @@
         </form>
 
         <div class="section-heading"><h1 id="view-title">Your dashboard</h1><span id="result-count" class="result-count"></span></div>
-        <p id="status" class="status" role="status" aria-live="polite">Connecting…</p>
         <section id="items" class="items" aria-label="Messages"></section>
         <details id="sources" class="sources" hidden>
           <summary>Source status <span id="source-count"></span></summary>

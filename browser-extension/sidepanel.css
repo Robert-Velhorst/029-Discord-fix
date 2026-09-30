@@ -68,8 +68,11 @@ h1, h2, p { margin-top: 0; }
 .connection input::placeholder, .search input::placeholder { color: var(--subtle); opacity: 1; }
 .primary-button { min-height: 40px; border: 0; border-radius: 8px; background: var(--accent-strong); color: #fff; font-weight: 700; cursor: pointer; }
 .primary-button:hover { filter: brightness(1.08); }
+button:disabled { opacity: .6; cursor: wait; }
 .connection .connection-help { margin: 11px 0 0; font-size: 11px; }
 .connection-error { color: var(--danger) !important; }
+#connection-error { margin: 10px 0 0; }
+#change-connection { margin-bottom: 12px; }
 
 .preferences { display: grid; gap: 2px; margin: 4px 0 15px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .preferences-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0 6px; }

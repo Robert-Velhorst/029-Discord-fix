@@ -42,7 +42,7 @@ The side panel is an optional, unpublished development extension. It is availabl
 4. Select this repository's `browser-extension` folder.
 5. Open the Discord Fix extension panel, paste the local dashboard address, and choose **Connect**. Allow its requested local-site permission.
 
-The side panel displays the five dashboard views and search. It refreshes while the desktop app is running. Its display preferences are stored in the browser. The panel is read-only; use the desktop app to change priority or follow-up state. The local dashboard address contains a temporary access token, so do not share it. Close Discord Fix to stop the dashboard session.
+The English side panel displays an overview, the five dashboard views, and search. It refreshes while the desktop app is running. Use **Change connection** to reconnect after restarting the desktop app. Its display preferences are stored in the browser. The panel is read-only; use the desktop app to change priority or follow-up state. Each snapshot contains up to 60 matching messages with previews of up to 420 characters; narrow the search and open the original for full content. The local dashboard address contains a temporary access token, so do not share it. Close Discord Fix to stop the dashboard session.
 
 To create a ZIP of the extension files, run `Package-Browser-Extension.ps1`. This does not publish the extension to an extension store.
 
@@ -85,6 +85,7 @@ The browser extension uses plain JavaScript. If Node.js is installed, its syntax
 ```powershell
 node --check browser-extension/service-worker.js
 node --check browser-extension/sidepanel.js
+node --test tests/browser_extension_runtime.test.cjs
 ```
 
 The project also contains a GitHub Actions workflow at `.github/workflows/test.yml`.
@@ -93,7 +94,7 @@ The project also contains a GitHub Actions workflow at `.github/workflows/test.y
 
 - This release does not replace Discord, reskin its interface, or provide an overlay over the Discord app or website.
 - Coverage depends on the data package or bot permissions provided. A data package is not a full inbox; a bot sees only authorized channels and bounded recent history.
-- The browser extension has not been published to the Chrome Web Store or Microsoft Edge Add-ons. Browser-rendered integration and visual acceptance have not been completed.
+- The browser extension has not been published to the Chrome Web Store or Microsoft Edge Add-ons. Its HTML, controls, and connection flow have been checked in isolated Chrome with synthetic local data and simulated extension APIs. Installation, side-panel activation, and permission prompts in a real extension session remain unverified.
 - Real-account Discord, real-export, and real-provider acceptance have not been completed. Automated provider-contract checks do not establish summary quality or provider acceptance.
 - Screen-reader acceptance has not been completed and no WCAG conformance claim is made.
 - The Windows executable is unsigned. Mobile, voice/video, general personal-DM access, and replies from Discord Fix are outside this development release.
