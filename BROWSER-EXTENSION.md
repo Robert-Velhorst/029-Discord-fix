@@ -1,6 +1,6 @@
 # Discord Fix browser side panel for Chrome and Edge
 
-Extension **0.3.0** displays local Discord Fix information in a browser side panel. Controls, explanations, dates, and recovery messages are English; source messages and names retain their original language. It does not read or modify Discord pages. It reads the local dashboard and saves your personal follow-up choices locally.
+Extension **0.3.1** displays local Discord Fix information in a browser side panel. Controls, explanations, dates, and recovery messages are English; source messages and names retain their original language. It does not read or modify Discord pages. It reads the local dashboard and saves your personal follow-up choices locally.
 
 The extension does not need access to Discord. When you connect a dashboard URL, the browser asks for optional access to `http://127.0.0.1/*`. The URL contains a temporary random access token and is stored in the extension's local browser storage. Keep it private.
 
@@ -53,6 +53,8 @@ Supply the same `-InstallDirectory` if you used a custom installation folder. Re
 ## Use the side panel
 
 Choose among Overview, Important, Needs reply, Conversations, Later, and Everything. Search the information already available in Discord Fix. A message's **Open original in Discord** link opens that message in a new browser tab when a valid Discord link is available.
+
+View buttons wrap onto additional rows in a narrow panel, keeping every view visible without horizontal navigation scrolling. Text buttons such as **Back to messages** and **Change connection** have a minimum height of 28 CSS pixels.
 
 Use **Previous/Next** to reach all matching results, with exact matching totals. A page has up to 60 previews of 420 characters. **Why this appears and full context** retrieves the full locally available text, bounded at one million characters with an explicit truncation notice. It shows English priority reasons, source coverage/status, receipt time, sync time, and server/channel IDs. Priority counts describe the database snapshot, rather than the visible search results. Completed, dismissed, deferred, and deleted states have English labels.
 

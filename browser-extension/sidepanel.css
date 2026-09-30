@@ -77,7 +77,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .preferences { display: grid; gap: 2px; margin: 4px 0 15px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .preferences-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0 6px; }
 .preferences-heading h2 { margin: 0; font-size: 14px; }
-.text-button { padding: 5px 0; border: 0; background: transparent; color: var(--accent); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.text-button { min-height: 28px; padding: 5px 0; border: 0; background: transparent; color: var(--accent); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .setting-row { display: flex; min-height: 47px; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); }
 .setting-row span { display: grid; gap: 2px; }
 .setting-row strong { font-size: 12px; }
@@ -90,7 +90,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .counts div + div { padding-left: 10px; border-left: 1px solid var(--line); }
 .counts strong { font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums; }
 .counts span { color: var(--muted); font-size: 10px; }
-.views { display: flex; gap: 6px; overflow-x: auto; margin: 0 -2px 12px; padding: 2px; scrollbar-width: thin; }
+.views { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 -2px 12px; padding: 2px; }
 .views button { min-height: 32px; flex: 0 0 auto; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 11px; cursor: pointer; }
 .views button:hover { color: var(--text); }
 .views button[aria-pressed="true"] { border-color: var(--accent-strong); background: var(--accent-strong); color: #fff; }

@@ -2,7 +2,7 @@
 
 Discord Fix is a Windows-first companion that helps people make sense of Discord information they are authorized to access. It brings available messages, follow-ups, and context into a calmer dashboard with clear source links.
 
-> **Current release: desktop 0.4 development build / extension 0.3.0.** This is a local development release, not a published or signed product. It includes a Windows desktop app, a local browser dashboard, and an optional Chrome/Edge side panel. The desktop app and standalone dashboard are currently in Dutch; the extension controls, explanations, dates, and recovery messages are in English. Source messages and names retain their original language.
+> **Current release: desktop 0.4 development build / extension 0.3.1.** This is a local development release, not a published or signed product. It includes a Windows desktop app, a local browser dashboard, and an optional Chrome/Edge side panel. The desktop app and standalone dashboard are currently in Dutch; the extension controls, explanations, dates, and recovery messages are in English. Source messages and names retain their original language.
 
 ## What Discord Fix does
 

@@ -4,7 +4,7 @@ Assessment date: 30 September 2026. Inspected baseline: `ebf2a203101166009cf5413
 
 The gap table and estimates below describe the inspected baseline. Effort and impact are planning judgments, not measured user outcomes. Implementation status for the subsequent build is recorded here.
 
-## Implementation status — extension 0.3.0
+## Implementation status — extension 0.3.1
 
 Implemented: exact result totals/pagination and full context; English rule explanations and source freshness; known thread/reply grouping with an explicit channel fallback; nonce/revision-checked local actions with Undo; saved source-linked summaries at four levels and previous-visit filtering; pins/saved searches/text sizing/presets; English manual pairing guidance; and standalone dashboard request cancellation/identity checks.
 
@@ -12,7 +12,9 @@ Verified with synthetic data through automated backend/script checks, the packag
 
 Added in 0.3.0: optional Windows native pairing with an exact extension-origin allowlist, DPAPI session record, live handshake, English recovery, and an explicit preparation/registration script. It does not install or register itself. Manual pairing remains available. Disconnect guards pending URL saves and late pairing replies; browser permission/storage changes clear obsolete displayed data.
 
-Still open: a genuine Discord overlay, actual unpacked-extension/native-host/permission/Edge acceptance, reliable screenshot and 320-pixel reflow checks, screen-reader acceptance, authorized real-source/provider validation, measured user outcomes, and signed/store distribution. Installation confirmation is pending; native registration has not been performed. Publication/signing has not been requested. Do not treat companion progress as completion of the overlay.
+Added in 0.3.1: view buttons wrap within narrow panels, and text buttons have a 28-pixel minimum height. A synthetic Chrome preview was measured at actual CSS widths of 320, 375, 768, and 1440 pixels. Saved screenshots show the navigation improvement. Settings and full message context also fit at 320 pixels with extra-large message text. See `DEVELOPMENT.md` for the bounded keyboard checks and preview limitations.
+
+Still open: a genuine Discord overlay, actual unpacked-extension/native-host/permission/Edge acceptance and installed-panel sizing, screen-reader acceptance, authorized real-source/provider validation, measured user outcomes, and signed/store distribution. Installation confirmation is pending; native registration has not been performed. Publication/signing has not been requested. Do not treat companion progress as completion of the overlay.
 
 ## Product direction to resolve
 
