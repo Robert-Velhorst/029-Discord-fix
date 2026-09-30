@@ -184,7 +184,7 @@ function renderItems(items) {
     if (item.author) {
       const author = document.createElement("span");
       author.className = "item-author";
-      author.textContent = item.author;
+      author.textContent = item.author_label || item.author;
       article.append(author);
     }
 
@@ -639,7 +639,7 @@ async function loadDetail(ident) {
     const content = ui["detail-content"];
     content.replaceChildren();
     const title = node("h2", item.channel_name || "Message context"); title.tabIndex = -1;
-    content.append(title, node("p", `${item.author || "Unknown author"} · ${formatDate(item.timestamp)}`));
+    content.append(title, node("p", `${item.author_label || item.author || "Unknown author"} · ${formatDate(item.timestamp)}`));
     content.append(node("p", item.deleted ? "Deleted at the source" : item.content, "full-content"));
     if (item.content_truncated) content.append(node("p", "This unusually large message is shortened; open the original for more."));
     content.append(node("h3", "Why this appears"));
@@ -667,7 +667,8 @@ async function loadDetail(ident) {
       }
       label.append(duration); actions.append(label, button("Snooze", () => sendAction(item, "later", { minutes: Number(duration.value) }))); content.append(actions);
     }
-    content.append(button("Read saved conversation summary", () => loadSummary("conversation", item.conversation || item.channel)));
+    content.append(node("p", "Saved summaries follow the source's original conversation and channel boundaries; other topics may be included."));
+    content.append(button("Read saved source conversation summary", () => loadSummary("conversation", item.conversation || item.channel)));
     content.append(button("Read saved channel summary", () => loadSummary("channel", item.parent_channel || item.channel)));
     if (item.guild && item.guild !== "@me") content.append(button("Read saved server summary", () => loadSummary("server", item.guild)));
     title.focus();

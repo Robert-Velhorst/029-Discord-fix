@@ -148,6 +148,17 @@ class BrowserWorkflowTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             page_data(self.path, since="2026-01-01")
 
+    def test_export_placeholder_is_english_without_changing_original_names(self):
+        self.ingest(
+            [
+                record(100, author="Jij (eigen export)", author_id=""),
+                record(101, author="Originele naam"),
+            ]
+        )
+        self.assertEqual(message_data(self.path, "100")["author_label"], "You (own export)")
+        self.assertEqual(message_data(self.path, "101")["author_label"], "Originele naam")
+        self.assertEqual(self.store.get("100")["author"], "Jij (eigen export)")
+
     def test_workflow_snooze_undo_and_conflicts_preserve_text(self):
         self.ingest([record(100)])
         original = message_data(self.path, "100")

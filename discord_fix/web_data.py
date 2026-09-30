@@ -127,6 +127,17 @@ def effective(row, current):
     return result
 
 
+def author_label(row):
+    # Translate the companion's export placeholder, not a source-provided name.
+    if (
+        row["source_kind"] == "import"
+        and not row["author_id"]
+        and row["author"] == "Jij (eigen export)"
+    ):
+        return "You (own export)"
+    return row["author"]
+
+
 def item_from(row, settings, sources, current, demo, full=False):
     record = effective(row, current)
     original = "" if record["deleted"] else record["content"]
@@ -151,6 +162,7 @@ def item_from(row, settings, sources, current, demo, full=False):
             )
         },
         "content": original[:limit],
+        "author_label": author_label(record),
         "content_truncated": len(original) > limit,
         "important": bool(record["important"]),
         "reply": bool(record["reply"]),
@@ -215,7 +227,7 @@ def page_data(
         records = [
             dict(row)
             for row in database.execute(
-                "SELECT sequence,id,source_id,guild,channel,channel_name,conversation,parent_channel,reply_to,timestamp,state,until,important,reply,deleted,author FROM messages JOIN browser_message_sequence ON message_id=messages.id WHERE sequence<=?",
+                "SELECT sequence,id,source_id,source_kind,author_id,guild,channel,channel_name,conversation,parent_channel,reply_to,timestamp,state,until,important,reply,deleted,author FROM messages JOIN browser_message_sequence ON message_id=messages.id WHERE sequence<=?",
                 (anchor,),
             )
         ]
@@ -287,7 +299,9 @@ def page_data(
                             for row in members
                         ),
                         "timestamp": latest["timestamp"],
-                        "participants": list(dict.fromkeys(row["author"] for row in members))[:8],
+                        "participants": list(dict.fromkeys(author_label(row) for row in members))[
+                            :8
+                        ],
                     }
                 )
             candidates = []

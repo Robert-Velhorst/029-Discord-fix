@@ -44,6 +44,8 @@ Disconnect also clears displayed context and invalidates pending responses. Pref
 
 ## Privacy and support
 
+Saved summaries use the source's original conversation/channel boundaries and may include topics outside a linked-reply group. The reader states this explicitly. If installing from the ZIP, extract it first and select the extracted folder with **Load unpacked**; do not select the ZIP itself.
+
 - The extension has no Discord-site permission, content script, Discord login, or user token. It does not send or modify messages.
 - The dashboard listens on this computer. It returns snapshots and accepts only explicit authenticated local follow-up actions. No bot token, provider credential, source configuration, or Discord account token is returned. Ordinary webpages receive no cross-origin access. Closing Discord Fix stops the server.
 - The URL contains a temporary access token. Do not share it; clear the connection in Display settings to remove it and revoke the extension's local-site permission.
