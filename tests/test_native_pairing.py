@@ -239,7 +239,10 @@ class NativeInstallerTests(unittest.TestCase):
                 self.assertIn("No browser registry entry was changed", result.stdout)
             manifest = json.loads((target / (HOST_NAME + ".json")).read_text(encoding="utf-8-sig"))
             self.assertEqual(manifest["allowed_origins"], [ORIGIN])
-            self.assertEqual(manifest["path"], str(target / "DiscordFixPairing.exe"))
+            # PowerShell may expand a Windows 8.3 alias (RUNNER~1) while Python
+            # retains it. Check the actual file, rather than its path spelling.
+            self.assertTrue(Path(manifest["path"]).is_absolute())
+            self.assertTrue(Path(manifest["path"]).samefile(target / "DiscordFixPairing.exe"))
             self.assertEqual(
                 (target / "DiscordFixPairing.exe").read_bytes(), executable.read_bytes()
             )
