@@ -30,7 +30,9 @@
 
       <section id="connection" class="connection" aria-labelledby="connection-title">
         <h1 id="connection-title">Connect your local dashboard</h1>
-        <p>In the Discord Fix desktop app, open <strong>Browserdashboard</strong> (the Dutch “Browser dashboard” option). Copy the address from your browser and paste it here. The connection stays on this computer.</p>
+        <p>In the Discord Fix desktop app, open <strong>Browserdashboard</strong> (the Dutch “Browser dashboard” option). Keep the app open. The connection stays on this computer.</p>
+        <button id="native-connect" class="primary-button" type="button" aria-describedby="native-help" disabled>Connect with desktop app</button>
+        <p id="native-help" class="connection-help">Requires the optional Windows pairing helper. Without it, copy the private address from the desktop app and paste it below.</p>
         <form id="connection-form" novalidate>
           <label for="dashboard-url">Local dashboard URL</label>
           <input id="dashboard-url" name="dashboard-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1:…/…/" aria-describedby="connection-help connection-error" required>
@@ -38,6 +40,7 @@
         </form>
         <p id="connection-help" class="connection-help">The extension requests access to the local Discord Fix server only when you connect. It does not read Discord tabs.</p>
         <p id="connection-error" class="connection-error" role="alert" hidden></p>
+        <button id="reset-access" class="text-button" type="button" disabled>Clear saved connection and access</button>
       </section>
 
       <section id="dashboard" hidden aria-label="Discord Fix dashboard">

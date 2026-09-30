@@ -2,7 +2,7 @@
 
 Discord Fix is a Windows-first companion that helps people make sense of Discord information they are authorized to access. It brings available messages, follow-ups, and context into a calmer dashboard with clear source links.
 
-> **Current release: desktop 0.4 development build / extension 0.2.0.** This is a local development release, not a published or signed product. It includes a Windows desktop app, a local browser dashboard, and an optional Chrome/Edge side panel. The desktop app and standalone dashboard are currently in Dutch; the extension controls, explanations, dates, and recovery messages are in English. Source messages and names retain their original language.
+> **Current release: desktop 0.4 development build / extension 0.3.0.** This is a local development release, not a published or signed product. It includes a Windows desktop app, a local browser dashboard, and an optional Chrome/Edge side panel. The desktop app and standalone dashboard are currently in Dutch; the extension controls, explanations, dates, and recovery messages are in English. Source messages and names retain their original language.
 
 ## What Discord Fix does
 
@@ -42,6 +42,8 @@ The side panel is an optional, unpublished development extension. It is availabl
 4. Select this repository's `browser-extension` folder.
 5. Open the Discord Fix extension panel, paste the local dashboard address, and choose **Connect**. Allow its requested local-site permission.
 
+For pairing without copying the address, optionally build and register the Windows pairing helper for your exact extension ID, then select **Connect with desktop app**. The [English extension guide](BROWSER-EXTENSION.md#optional-windows-pairing-helper) explains setup, permissions, and removal. Manual connection remains available; neither the app nor the build script registers browser access automatically.
+
 The English panel includes search with exact matching totals, **Previous/Next** pages, full local message context, English priority reasons, and source/freshness details. **Conversations** groups known threads and linked replies; missing relationships have an explicitly labelled channel fallback. Complete, dismiss, reopen, snooze, or change personal priority/reply status in the detail view, then use **Undo**. These actions update the local database only.
 
 Use **Since last visit** for newly received or edited local records. Read saved source-linked summaries; generate or update them in the desktop app. Choose Focus/Compact/Context presets, text sizes, themes, spacing, and metadata visibility. Pin conversations and save view/search combinations on this device. Pages have up to 60 previews of 420 characters; context retrieves full locally available text up to one million characters. Paging uses an insertion boundary; refresh to include newly imported messages. Existing edits, removals, and workflow changes remain live.
@@ -64,6 +66,7 @@ See the [Windows user guide — Dutch](USER-GUIDE.nl.md) and the [browser extens
 
 - Discord Fix does not use personal Discord account tokens, self-bots, hidden page scraping, or message-sending routes.
 - The browser extension has no Discord-site permission or content script. It requests optional access to `http://127.0.0.1` only when connecting to the local dashboard.
+- Optional native pairing requests `nativeMessaging` only on an explicit click. The separately registered helper permits only listed extension IDs and returns a live, verified local session address. Its session record is encrypted with Windows DPAPI. **Clear connection** removes the saved browser URL and revokes both optional permissions.
 - The desktop dashboard listens on this computer only. Reads use SQLite snapshots. Explicit local actions require the private URL, a separate session nonce, and a current item revision; stale writes are rejected. Actions have no Discord API write path.
 - Bot tokens and configured provider keys use Windows DPAPI. The message database is a local SQLite file protected by Windows account access; it does not have separate application-level encryption.
 - AI providers are not contacted until the user configures and chooses them. No model, subscription, or external service is provisioned by this repository.

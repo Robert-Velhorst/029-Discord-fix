@@ -1,4 +1,5 @@
 const API_ORIGIN_PERMISSION = "http://127.0.0.1/*";
+const NATIVE_HOST = "com.discordfix.companion";
 const VIEW_TITLES = {
   Overview: "Your dashboard",
   "Important Now": "Important",
@@ -38,7 +39,7 @@ const ui = Object.fromEntries(
     "preset", "text-size", "show-metadata", "since-visit", "pinned-only", "show-summary",
     "saved-view", "saved-name", "save-view", "remove-view", "setup-hint", "action-status",
     "undo-action", "back-conversations", "pagination", "previous-page", "next-page", "page-label",
-    "detail", "detail-content", "close-detail",
+    "detail", "detail-content", "close-detail", "native-connect", "reset-access",
   ].map((id) => [id, document.getElementById(id)]),
 );
 
@@ -62,6 +63,10 @@ const state = {
   undo: null,
   acting: false,
   connectionEpoch: 0,
+  connectionStoreQueue: Promise.resolve(),
+  permissionRequest: null,
+  connecting: false,
+  clearing: false,
   detailId: "",
 };
 
@@ -366,10 +371,12 @@ function showConnected() {
 }
 
 async function initialize() {
+  const epoch = state.connectionEpoch;
   state.refreshTimer = window.setInterval(() => { if (ui.detail.hidden && !state.acting) loadDashboard(); }, 30000);
   const stored = await chrome.storage.local.get([
     "dashboardUrl", "preferences", "view", "pins", "savedViews", "lastVisit",
   ]);
+  if (epoch !== state.connectionEpoch) return;
   state.preferences = normalizePreferences(stored.preferences);
   state.view = Object.hasOwn(VIEW_TITLES, stored.view) ? stored.view : "Overview";
   state.pins = Array.isArray(stored.pins) ? stored.pins.filter((id) => typeof id === "string" && /^[a-f0-9]{64}$/.test(id)).slice(0, 100) : [];
@@ -385,6 +392,7 @@ async function initialize() {
     try {
       state.baseUrl = normalizeDashboardUrl(savedUrl);
       const granted = await chrome.permissions.contains({ origins: [API_ORIGIN_PERMISSION] });
+      if (epoch !== state.connectionEpoch) return;
       if (granted) {
         showConnected();
         return;
@@ -405,10 +413,52 @@ async function initialize() {
   if (ui.status.dataset.state !== "error") setStatus("Not connected to Discord Fix.");
 }
 
+function connecting(disabled) {
+  state.connecting = disabled;
+  ui.connect.disabled = disabled;
+  ui["native-connect"].disabled = disabled;
+}
+
+function requestAccess(request) {
+  const pending = chrome.permissions.request(request);
+  state.permissionRequest = pending;
+  return pending.finally(() => {
+    if (state.permissionRequest === pending) state.permissionRequest = null;
+  });
+}
+
+function storeConnection(operation) {
+  const next = state.connectionStoreQueue.then(operation);
+  state.connectionStoreQueue = next.catch(() => {});
+  return next;
+}
+
+async function finishConnection(baseUrl, epoch) {
+  if (epoch !== state.connectionEpoch) return;
+  try {
+    await storeConnection(async () => {
+      if (epoch === state.connectionEpoch) await chrome.storage.local.set({ dashboardUrl: baseUrl });
+    });
+  } catch {
+    throw new Error("Could not save the connection in this browser. Try connecting again.");
+  }
+  if (epoch !== state.connectionEpoch) return;
+  state.baseUrl = baseUrl;
+  showConnected();
+  ui.search.focus();
+}
+
+function connectionError(message) {
+  ui["connection-error"].textContent = message;
+  ui["connection-error"].hidden = false;
+}
+
 ui["connection-form"].addEventListener("submit", async (event) => {
   event.preventDefault();
   if (ui.connect.disabled) return;
-  ui.connect.disabled = true;
+  connecting(true);
+  const epoch = ++state.connectionEpoch;
+  setStatus("Connecting to Discord Fix…");
   ui["connection-error"].hidden = true;
   ui["dashboard-url"].removeAttribute("aria-invalid");
   const input = ui["dashboard-url"].value;
@@ -418,28 +468,70 @@ ui["connection-form"].addEventListener("submit", async (event) => {
     validated = true;
     let granted;
     try {
-      granted = await chrome.permissions.request({ origins: [API_ORIGIN_PERMISSION] });
+      granted = await requestAccess({ origins: [API_ORIGIN_PERMISSION] });
     } catch {
       throw new Error("The browser could not request access to the local dashboard.");
     }
+    if (epoch !== state.connectionEpoch) return;
     if (!granted) throw new Error("Access to the local Discord Fix server was not granted.");
-    try {
-      await chrome.storage.local.set({ dashboardUrl: baseUrl });
-    } catch {
-      throw new Error("Could not save the connection in this browser. Try connecting again.");
-    }
-    state.baseUrl = baseUrl;
-    ++state.connectionEpoch;
-    showConnected();
-    ui.search.focus();
+    await finishConnection(baseUrl, epoch);
   } catch (error) {
-    const paragraph = ui["connection-error"];
-    paragraph.textContent = error.message || "Could not validate the URL.";
-    paragraph.hidden = false;
+    if (epoch !== state.connectionEpoch) return;
+    setStatus("Not connected to Discord Fix.", "error");
+    connectionError(error.message || "Could not validate the URL.");
     if (!validated) ui["dashboard-url"].setAttribute("aria-invalid", "true");
     ui["dashboard-url"].focus();
   } finally {
-    ui.connect.disabled = false;
+    if (epoch === state.connectionEpoch) connecting(false);
+  }
+});
+
+function nativePairing() {
+  let timeout;
+  return Promise.race([
+    chrome.runtime.sendNativeMessage(NATIVE_HOST, { command: "pair", protocol: 1 }),
+    new Promise((_, reject) => {
+      timeout = window.setTimeout(() => reject(new Error("Pairing timed out.")), 15000);
+    }),
+  ]).finally(() => window.clearTimeout(timeout));
+}
+
+ui["native-connect"].addEventListener("click", async () => {
+  if (ui["native-connect"].disabled) return;
+  connecting(true);
+  const epoch = ++state.connectionEpoch;
+  setStatus("Pairing with desktop app…");
+  ui["connection-error"].hidden = true;
+  try {
+    // Request directly from this click; no startup discovery or automatic grant.
+    let granted;
+    try {
+      granted = await requestAccess({ permissions: ["nativeMessaging"], origins: [API_ORIGIN_PERMISSION] });
+    } catch {
+      throw new Error("The browser could not request local pairing access. Use the manual connection below.");
+    }
+    if (epoch !== state.connectionEpoch) return;
+    if (!granted) throw new Error("Local pairing access was not granted. You can paste the private address below instead.");
+    let reply;
+    try { reply = await nativePairing(); } catch {
+      throw new Error("Could not reach the Windows pairing helper. Check its installation, keep Browserdashboard open, or paste the private address below.");
+    }
+    if (epoch !== state.connectionEpoch) return;
+    if (reply?.ok !== true || reply?.protocol !== 1 || typeof reply?.url !== "string") {
+      throw new Error("The desktop session is unavailable. Open Browserdashboard again, check the helper registration, or paste its private address below.");
+    }
+    let baseUrl;
+    try { baseUrl = normalizeDashboardUrl(reply.url); } catch {
+      throw new Error("The helper returned an invalid local address. Use the private address from the desktop app instead.");
+    }
+    await finishConnection(baseUrl, epoch);
+  } catch (error) {
+    if (epoch === state.connectionEpoch) {
+      setStatus("Not connected to Discord Fix.", "error");
+      connectionError(error.message);
+    }
+  } finally {
+    if (epoch === state.connectionEpoch) connecting(false);
   }
 });
 
@@ -510,7 +602,7 @@ async function savePreferences() {
   control.addEventListener("change", () => { ui.preset.value = "custom"; savePreferences(); });
 });
 
-async function disconnect() {
+function clearConnectionUI() {
   ++state.connectionEpoch;
   ++state.requestId;
   state.controller?.abort();
@@ -551,14 +643,29 @@ async function disconnect() {
   ui["dashboard-url"].value = "";
   ui["dashboard-url"].focus();
   ui.refresh.disabled = false;
-  ui.connect.disabled = true;
+}
+
+async function disconnect() {
+  if (state.clearing) return;
+  state.clearing = true;
+  ui["reset-access"].disabled = true;
+  const pendingPermission = state.permissionRequest;
+  clearConnectionUI();
+  const epoch = state.connectionEpoch;
+  connecting(true);
   setStatus("Clearing connection…");
+  // A still-open grant prompt must settle before revocation, so a late grant
+  // cannot restore access after Clear connection has completed.
+  if (pendingPermission) await pendingPermission.catch(() => {});
   const results = await Promise.allSettled([
-    chrome.storage.local.remove("dashboardUrl"),
-    chrome.permissions.remove({ origins: [API_ORIGIN_PERMISSION] }),
+    storeConnection(() => chrome.storage.local.remove("dashboardUrl")),
+    chrome.permissions.remove({ permissions: ["nativeMessaging"], origins: [API_ORIGIN_PERMISSION] }),
   ]);
-  ui.connect.disabled = false;
-  if (results.some((result) => result.status === "rejected")) {
+  state.clearing = false;
+  ui["reset-access"].disabled = false;
+  if (epoch !== state.connectionEpoch) return;
+  connecting(false);
+  if (results.some((result) => result.status === "rejected" || result.value === false)) {
     setStatus("Disconnected for this session. The browser could not clear all saved access. " +
       "Remove the extension's local-site access in browser settings before closing this panel.", "error");
   } else setStatus("Connection cleared. Paste a new dashboard URL to reconnect.");
@@ -566,6 +673,21 @@ async function disconnect() {
 
 ui.disconnect.addEventListener("click", disconnect);
 ui["change-connection"].addEventListener("click", disconnect);
+ui["reset-access"].addEventListener("click", disconnect);
+
+chrome.permissions.onRemoved.addListener((removed) => {
+  if (state.clearing || (!state.baseUrl && !state.connecting) || !removed.origins?.includes(API_ORIGIN_PERMISSION)) return;
+  clearConnectionUI();
+  connecting(false);
+  setStatus("Local access was revoked. Connect again to grant access.", "error");
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !state.baseUrl || !changes.dashboardUrl || changes.dashboardUrl.newValue === state.baseUrl) return;
+  clearConnectionUI();
+  connecting(false);
+  setStatus("The saved connection changed in another panel. Connect again to continue.", "error");
+});
 
 function resetPage() {
   state.offset = 0;
@@ -781,4 +903,9 @@ initialize().catch(() => {
   ui.connection.hidden = false;
   ui.dashboard.hidden = true;
   setStatus("Could not read browser extension settings.", "error");
-}).finally(() => { ui.connect.disabled = false; });
+}).finally(() => {
+  if (!state.clearing) {
+    connecting(false);
+    ui["reset-access"].disabled = false;
+  }
+});

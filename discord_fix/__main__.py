@@ -762,7 +762,7 @@ class App:
         if not getattr(self, "dashboard_server", None):
             from .web_dashboard import DashboardServer
 
-            self.dashboard_server = DashboardServer(self.store.path)
+            self.dashboard_server = DashboardServer(self.store.path, pairing_vault=self.vault)
         url = self.dashboard_server.start()
         opened = webbrowser.open(url)
         self.status.set(
@@ -794,7 +794,12 @@ class App:
         address.configure(state="readonly")
         address.pack(fill="x", pady=8)
         feedback = tk.StringVar(
-            value="This private address expires when you close Discord Fix. Do not share it."
+            value="This private address expires when you close Discord Fix. Do not share it.\n"
+            + (
+                "If you installed the pairing helper, choose Connect with desktop app in the extension."
+                if self.dashboard_server.pairing_ready
+                else "Automatic pairing is unavailable. Use the private address above."
+            )
         )
 
         def copy_address():

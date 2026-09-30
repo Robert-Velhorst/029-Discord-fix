@@ -41,7 +41,7 @@ class Element {
   focus() { this.focused = true; }
 }
 
-async function fixture({ stored = {}, granted = true, fetch, storageError = false, html = page, js = script } = {}) {
+async function fixture({ stored = {}, granted = true, fetch, storageError = false, native, save, permissionRequest, html = page, js = script } = {}) {
   const elements = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map((match) => [match[1], new Element()]));
   const views = [...html.matchAll(/data-view="([^"]+)"/g)].map((match) => {
     const button = new Element();
@@ -49,6 +49,10 @@ async function fixture({ stored = {}, granted = true, fetch, storageError = fals
     return button;
   });
   const calls = [];
+  const nativeCalls = [];
+  const permissionCalls = [];
+  let permissionRemoved;
+  let storageChanged;
   let timeoutId = 0;
   const context = vm.createContext({
     URL, URLSearchParams, AbortController, Intl, Date, console,
@@ -62,12 +66,13 @@ async function fixture({ stored = {}, granted = true, fetch, storageError = fals
     matchMedia: () => ({ matches: false, addEventListener() {} }),
     window: { location: { pathname: "/test_dashboard_token_123456789/" }, setTimeout: () => ++timeoutId, clearTimeout() {}, setInterval() {} },
     chrome: {
-      storage: { local: {
+      runtime: { sendNativeMessage: async (host, message) => { nativeCalls.push({host, message}); return native ? native(host, message) : {ok:true,protocol:1,url}; } },
+      storage: { onChanged: { addListener: (listener) => { storageChanged = listener; } }, local: {
         get: async () => stored,
-        set: async (value) => { if (storageError) throw Error("localized browser error"); Object.assign(stored, value); },
+        set: async (value) => { if (storageError) throw Error("localized browser error"); if (save) await save(value); Object.assign(stored, value); },
         remove: async () => { if (storageError) throw Error("localized browser error"); delete stored.dashboardUrl; },
       } },
-      permissions: { contains: async () => granted, request: async () => granted, remove: async () => true },
+      permissions: { onRemoved: { addListener: (listener) => { permissionRemoved = listener; } }, contains: async () => granted, request: async (request) => { permissionCalls.push(request); return permissionRequest ? permissionRequest(request) : granted; }, remove: async (request) => { permissionCalls.push({removed:request}); return true; } },
     },
     fetch: (address, options) => {
       calls.push({ address, options });
@@ -76,7 +81,7 @@ async function fixture({ stored = {}, granted = true, fetch, storageError = fals
   });
   vm.runInContext(js, context);
   await tick();
-  return { elements, views, calls, context, run: (expression) => vm.runInContext(expression, context) };
+  return { elements, views, calls, context, nativeCalls, permissionCalls, permissionRemoved, storageChanged, run: (expression) => vm.runInContext(expression, context) };
 }
 
 function response(content) {
@@ -85,6 +90,110 @@ function response(content) {
     sources: [], counts: { important: 1, reply: 2, later: 0 }, generated_at: "2026-09-30T12:00:00Z",
   }) };
 }
+
+test("native pairing requests optional access only on click and saves the local session", async () => {
+  const stored = {};
+  const f = await fixture({stored});
+  assert.equal(f.nativeCalls.length, 0);
+  assert.equal(f.permissionCalls.length, 0);
+  await f.elements["native-connect"].listeners.click();
+  assert.equal(f.nativeCalls[0].host, "com.discordfix.companion");
+  assert.equal(f.nativeCalls[0].message.command, "pair");
+  assert.equal(f.permissionCalls[0].permissions[0], "nativeMessaging");
+  assert.equal(f.permissionCalls[0].origins[0], "http://127.0.0.1/*");
+  assert.equal(stored.dashboardUrl, url);
+  assert.equal(f.elements.dashboard.hidden, false);
+  assert.equal(f.elements.search.focused, true);
+  await f.run("disconnect()");
+  assert.equal(stored.dashboardUrl, undefined);
+  assert.equal(f.permissionCalls.at(-1).removed.permissions[0], "nativeMessaging");
+});
+
+test("denied native access never starts the helper", async () => {
+  const f = await fixture({granted:false});
+  await f.elements["native-connect"].listeners.click();
+  assert.equal(f.nativeCalls.length, 0);
+  assert.equal(f.calls.length, 0);
+  assert.match(f.elements["connection-error"].textContent, /not granted.*paste/);
+});
+
+test("missing helper and untrusted replies use English manual recovery", async () => {
+  for (const native of [async () => {throw Error("geheim lokaal pad");}, async () => ({ok:false,error:"localized failure"}), async () => ({ok:true,protocol:1,url:"https://example.org/secret"})]) {
+    const stored = {};
+    const f = await fixture({stored,native});
+    await f.elements["native-connect"].listeners.click();
+    assert.equal(stored.dashboardUrl, undefined);
+    assert.equal(f.calls.length, 0);
+    assert.match(f.elements["connection-error"].textContent, /private address/);
+    assert.doesNotMatch(f.elements["connection-error"].textContent, /geheim|localized|example.org/);
+    assert.equal(f.elements.connect.disabled, false);
+  }
+});
+
+test("a late native result cannot reconnect after clearing", async () => {
+  const pending = deferred();
+  const stored = {};
+  const f = await fixture({stored,native:()=>pending.promise});
+  const connection = f.elements["native-connect"].listeners.click();
+  await tick();
+  await f.run("disconnect()");
+  pending.resolve({ok:true,protocol:1,url});
+  await connection;
+  assert.equal(stored.dashboardUrl, undefined);
+  assert.equal(f.run("state.baseUrl"), "");
+  assert.equal(f.elements.dashboard.hidden, true);
+  assert.equal(f.calls.length, 0);
+});
+
+test("clearing waits for a pending permission grant and then revokes it", async () => {
+  const pending = deferred();
+  const stored = {};
+  const f = await fixture({stored,permissionRequest:()=>pending.promise});
+  const connection = f.elements["native-connect"].listeners.click();
+  const clearing = f.run("disconnect()");
+  assert.equal(f.elements["native-connect"].disabled, true);
+  assert.equal(f.permissionCalls.some((call)=>call.removed), false);
+  pending.resolve(true);
+  await Promise.all([connection,clearing]);
+  assert.equal(f.permissionCalls.at(-1).removed.permissions[0], "nativeMessaging");
+  assert.equal(f.nativeCalls.length, 0);
+  assert.equal(stored.dashboardUrl, undefined);
+  assert.equal(f.elements["native-connect"].disabled, false);
+});
+
+test("clearing is serialized after an in-progress connection save", async () => {
+  const saving = deferred();
+  const stored = {};
+  const f = await fixture({stored,save:(value)=>value.dashboardUrl ? saving.promise : undefined});
+  f.elements["dashboard-url"].value = url;
+  const connection = f.elements["connection-form"].listeners.submit({preventDefault(){}});
+  await tick();
+  const clearing = f.run("disconnect()");
+  assert.equal(f.elements.dashboard.hidden, true);
+  saving.resolve();
+  await Promise.all([connection,clearing]);
+  assert.equal(stored.dashboardUrl, undefined);
+  assert.equal(f.calls.length, 0);
+  assert.equal(f.elements.connect.disabled, false);
+});
+
+test("permission revocation clears private displayed data immediately", async () => {
+  const f = await fixture({stored:{dashboardUrl:url}});
+  assert.match(f.elements.items.textContent, /example/);
+  f.permissionRemoved({origins:["http://127.0.0.1/*"]});
+  assert.equal(f.elements.items.childElementCount, 0);
+  assert.equal(f.elements.dashboard.hidden, true);
+  assert.equal(f.run("state.baseUrl"), "");
+  assert.match(f.elements.status.textContent, /revoked/);
+});
+
+test("another panel removing the URL clears this panel", async () => {
+  const f = await fixture({stored:{dashboardUrl:url}});
+  f.storageChanged({dashboardUrl:{oldValue:url}}, "local");
+  assert.equal(f.elements.items.childElementCount, 0);
+  assert.equal(f.elements.dashboard.hidden, true);
+  assert.match(f.elements.status.textContent, /another panel/);
+});
 
 test("fresh panel shows an English connection status", async () => {
   const f = await fixture();

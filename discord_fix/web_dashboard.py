@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+from .browser_pairing import clear, publish
 from .web_data import message_data, page_data, summary_data
 from .web_workflow import WorkflowConflict, apply_workflow
 
@@ -44,11 +45,14 @@ def dashboard_data(database_path, view="Overview", search="", demo=False, **opti
 class DashboardServer:
     """Serve the companion's dashboard on an ephemeral localhost port."""
 
-    def __init__(self, database_path, demo=False):
+    def __init__(self, database_path, demo=False, pairing_vault=None):
         self.database_path = str(Path(database_path).resolve())
         self.demo = bool(demo)
         self.token = secrets.token_urlsafe(32)
         self.write_nonce = secrets.token_urlsafe(32)
+        self.session_id = secrets.token_urlsafe(24)
+        self.pairing_vault = pairing_vault
+        self.pairing_ready = False
         self.workflow_lock = threading.Lock()
         self.undo = {}
         self.server = None
@@ -105,6 +109,17 @@ class DashboardServer:
                 resource = segments[1] if len(segments) > 1 else ""
                 if resource in ("", "index.html"):
                     self._send(200, owner.html, "text/html; charset=utf-8")
+                    return
+                if resource == "api/session":
+                    body = json.dumps(
+                        {
+                            "application": "DiscordFix",
+                            "protocol": 1,
+                            "session_id": owner.session_id,
+                            "demo": owner.demo,
+                        }
+                    ).encode()
+                    self._send(200, body, "application/json; charset=utf-8")
                     return
                 if resource not in {"api/dashboard", "api/message", "api/summaries"}:
                     self._reject()
@@ -257,6 +272,12 @@ class DashboardServer:
         self.thread.start()
         port = self.server.server_address[1]
         self.url = f"http://127.0.0.1:{port}/{self.token}/"
+        if self.pairing_vault is not None and not self.demo:
+            try:
+                publish(self.pairing_vault, self.url, self.session_id)
+                self.pairing_ready = True
+            except (OSError, RuntimeError, ValueError):
+                self.pairing_ready = False
         return self.url
 
     def stop(self):
@@ -264,6 +285,9 @@ class DashboardServer:
             self.server.shutdown()
             self.server.server_close()
             self.thread.join(timeout=3)
+            if self.pairing_vault is not None:
+                clear(self.pairing_vault, self.session_id)
+            self.pairing_ready = False
             self.server = None
             self.thread = None
             self.url = None

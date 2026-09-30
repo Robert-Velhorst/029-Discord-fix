@@ -4,13 +4,15 @@ Assessment date: 30 September 2026. Inspected baseline: `ebf2a203101166009cf5413
 
 The gap table and estimates below describe the inspected baseline. Effort and impact are planning judgments, not measured user outcomes. Implementation status for the subsequent build is recorded here.
 
-## Implementation status — extension 0.2.0
+## Implementation status — extension 0.3.0
 
 Implemented: exact result totals/pagination and full context; English rule explanations and source freshness; known thread/reply grouping with an explicit channel fallback; nonce/revision-checked local actions with Undo; saved source-linked summaries at four levels and previous-visit filtering; pins/saved searches/text sizing/presets; English manual pairing guidance; and standalone dashboard request cancellation/identity checks.
 
 Verified with synthetic data through automated backend/script checks, the packaged Windows self-test, and Chrome interactions against real local HTTP routes. Extension APIs in the rendered preview were simulated. See `DEVELOPMENT.md` for exact evidence and limitations.
 
-Still open: a genuine Discord overlay, automatic native pairing, actual unpacked-extension/permission/Edge acceptance, reliable screenshot and 320-pixel reflow checks, screen-reader acceptance, authorized real-source/provider validation, measured user outcomes, and signed/store distribution. Installation confirmation is pending; publication/signing has not been requested. Do not treat companion progress as completion of the overlay.
+Added in 0.3.0: optional Windows native pairing with an exact extension-origin allowlist, DPAPI session record, live handshake, English recovery, and an explicit preparation/registration script. It does not install or register itself. Manual pairing remains available. Disconnect guards pending URL saves and late pairing replies; browser permission/storage changes clear obsolete displayed data.
+
+Still open: a genuine Discord overlay, actual unpacked-extension/native-host/permission/Edge acceptance, reliable screenshot and 320-pixel reflow checks, screen-reader acceptance, authorized real-source/provider validation, measured user outcomes, and signed/store distribution. Installation confirmation is pending; native registration has not been performed. Publication/signing has not been requested. Do not treat companion progress as completion of the overlay.
 
 ## Product direction to resolve
 

@@ -11,9 +11,10 @@ class BrowserExtensionTests(unittest.TestCase):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
 
         self.assertEqual(manifest["manifest_version"], 3)
-        self.assertEqual(manifest["version"], "0.2.0")
+        self.assertEqual(manifest["version"], "0.3.0")
         self.assertEqual(set(manifest["permissions"]), {"sidePanel", "storage"})
         self.assertEqual(manifest["optional_host_permissions"], ["http://127.0.0.1/*"])
+        self.assertEqual(manifest["optional_permissions"], ["nativeMessaging"])
         self.assertNotIn("host_permissions", manifest)
         self.assertNotIn("content_scripts", manifest)
         self.assertNotIn("tabs", manifest["permissions"])
