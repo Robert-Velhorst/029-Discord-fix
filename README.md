@@ -15,6 +15,8 @@ Discord Fix is a Windows-first companion that helps people make sense of Discord
 
 Discord Fix is a companion, **not a replacement Discord client or a full-screen overlay**. The browser extension does not inject into, inspect, or change Discord pages. It reads the local dashboard and saves your personal follow-up choices to Discord Fix. Those choices never change or send Discord messages.
 
+The originally requested customizable Discord shell remains open. The [integration assessment](OVERLAY-INTEGRATION-ASSESSMENT.md) records the official routes reviewed, their limits, and a prepared authorization inquiry that has not been sent.
+
 ## Run from source on Windows
 
 Requirements: Python 3.11 or later and a Windows installation that includes Tcl/Tk. No third-party Python packages are needed to run the source version.

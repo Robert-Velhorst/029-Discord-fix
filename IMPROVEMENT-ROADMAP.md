@@ -20,6 +20,8 @@ Robert's original request was an installable, customizable shell over Discord. T
 
 Keep that gap explicit. Before promising a Discord UI overlay, assess the exact proposed interaction, permissions, maintenance burden, and permitted integration route. Discord's terms restrict unauthorized software designed to modify the services and software modifications/reverse engineering, with stated exceptions. This is an integration constraint to investigate, not a claim that every possible overlay has been individually assessed. Do not obtain personal account tokens or silently broaden the current extension's access. See [Discord's terms](https://discord.com/terms) and [its self-bot policy](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots).
 
+The [integration assessment](OVERLAY-INTEGRATION-ASSESSMENT.md) now records the inspected Activity/Embedded App SDK/Social SDK routes, a bounded read-only live UI observation, and an unsent inquiry about the proposed browser presentation extension. No inspected route established permission to replace Discord's existing layout.
+
 ## Verified gaps and proposed outcomes
 
 | Improvement | Current evidence | Proposed behavior and acceptance |
@@ -82,4 +84,4 @@ Run maintainability and privacy checks alongside product tests. Keep interaction
 
 ## Immediate next step
 
-Build one coherent detail flow: select an item → see **Why this appears**, its source/freshness, and full available context → open the original. Add pagination to reach older matches. Validate that flow on both browser surfaces, then extend it with authenticated local workflow actions and actual conversation grouping.
+The detail flow, pagination, local workflow actions, and conversation grouping are implemented. Complete the pending actual browser installation and pairing acceptance with synthetic data, then validate authorized real sources. Resolve the documented integration route for the original shell independently; companion acceptance does not close that gap.
