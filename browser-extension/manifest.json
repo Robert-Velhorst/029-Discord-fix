@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Discord Fix — Focus Panel",
-  "version": "0.1.2",
-  "description": "A local, read-only dashboard alongside Discord.",
+  "version": "0.2.0",
+  "description": "A local dashboard with context and personal follow-ups alongside Discord.",
   "minimum_chrome_version": "114",
   "permissions": ["sidePanel", "storage"],
   "optional_host_permissions": ["http://127.0.0.1/*"],

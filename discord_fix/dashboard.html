@@ -350,6 +350,8 @@
             <div class="empty-state" id="empty-state" hidden>Geen berichten gevonden. Kies een andere weergave of pas je zoekopdracht aan.</div>
           </div>
           <p class="status-line" id="status-line" role="status" aria-live="polite">Dashboard wordt geladen…</p>
+          <nav aria-label="Resultaatpagina's"><button id="back-conversations" type="button" hidden>Terug naar gesprekken</button><button id="previous-page" type="button" hidden>Vorige</button><span id="page-label"></span><button id="next-page" type="button" hidden>Volgende</button></nav>
+          <section id="message-context" aria-label="Volledige berichtcontext" hidden><button id="close-context" type="button">Sluit context</button><div id="context-body"></div></section>
         </section>
       </main>
 
@@ -381,7 +383,7 @@
 
     <script>
       (() => {
-        const state = { view: "Overview", query: "", pending: false };
+        const state = { view: "Overview", query: "", requestId: 0, controller: null, offset: 0, anchor: null, conversation: "", contextId: 0, contextController: null };
         const titles = {
           "Overview": ["Jouw Discord-overzicht", "Belangrijk voor jou"],
           "Everything": ["Alles", "Alle beschikbare berichten"],
@@ -404,6 +406,7 @@
 
         function setView(view) {
           state.view = view;
+          state.offset = 0; state.anchor = null; state.conversation = "";
           document.querySelectorAll("[data-view]").forEach((button) => {
             if (button.dataset.view === view) button.setAttribute("aria-current", "page");
             else button.removeAttribute("aria-current");
@@ -438,6 +441,9 @@
             const row = element("tr");
             const message = element("td");
             message.append(element("span", "message-title", item.deleted ? "Verwijderd bij de bron" : (item.content || "(Geen berichttekst beschikbaar)")));
+            const context = element("button", "original-link", "Volledige context en prioriteitsredenen");
+            context.type = "button"; context.addEventListener("click", () => showContext(item.id));
+            message.append(context);
             if (item.deadline) message.append(element("span", "message-preview", `Deadline: ${formatTime(item.deadline)}`));
             if (item.url && /^https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+$/.test(item.url)) {
               const link = element("a", "original-link", "Openen in Discord ↗");
@@ -458,6 +464,39 @@
             row.append(message, channel, status, time);
             rows.append(row);
           }
+        }
+
+        function renderGroups(groups) {
+          rows.replaceChildren();
+          document.getElementById("empty-state").hidden = groups.length !== 0;
+          for (const group of groups) {
+            const row = element("tr"); const cell = element("td"); cell.colSpan = 4;
+            const open = element("button", "original-link", `${group.channel_name} · ${group.count} berichten · ${group.open_replies} open opvolgingen`);
+            open.type = "button";
+            open.addEventListener("click", () => { state.conversation = group.id; state.offset = 0; state.anchor = null; refresh(); });
+            cell.append(open, element("p", "message-preview", ({ thread: "Thread", reply: "Gekoppelde antwoorden", conversation: "Gesprek", channel: "Kanaalgroep; kan meerdere onderwerpen bevatten" })[group.kind]));
+            row.append(cell); rows.append(row);
+          }
+        }
+
+        async function showContext(id) {
+          state.contextController?.abort(); const controller = new AbortController(); state.contextController = controller;
+          const contextId = ++state.contextId; const timeout = window.setTimeout(() => controller.abort(), 10000);
+          const panel = document.getElementById("message-context"); const body = document.getElementById("context-body");
+          panel.hidden = false; body.replaceChildren(element("p", "", "Context wordt geladen…"));
+          try {
+            const response = await fetch(`${base}api/message?${new URLSearchParams({id})}`, { credentials: "omit", redirect: "error", cache: "no-store", signal: controller.signal });
+            if (!response.ok) throw new Error("Unavailable"); const item = await response.json();
+            if (contextId !== state.contextId || controller.signal.aborted) return;
+            const title = element("h2", "", item.channel_name); title.tabIndex = -1;
+            const content = element("p", "", item.content); content.style.whiteSpace = "pre-wrap";
+            body.replaceChildren(title, content);
+            if (item.content_truncated) body.append(element("p", "", "Zeer groot bericht ingekort; open het origineel voor meer."));
+            for (const reason of item.reasons || []) body.append(element("p", "", reason.text));
+            body.append(element("p", "", `${item.source.name} · ${item.source.coverage}`)); title.focus();
+          } catch {
+            if (contextId === state.contextId) body.replaceChildren(element("p", "", "Context niet beschikbaar. Probeer opnieuw."));
+          } finally { window.clearTimeout(timeout); }
         }
 
         function renderSources(sources) {
@@ -481,18 +520,26 @@
         }
 
         async function refresh() {
-          if (state.pending) return;
-          state.pending = true;
+          state.controller?.abort(); const controller = new AbortController(); state.controller = controller;
+          const requestId = ++state.requestId; const view = state.view; const query = state.query;
+          const isCurrent = () => requestId === state.requestId && view === state.view && query === state.query;
+          const timeout = window.setTimeout(() => controller.abort(), 10000);
+          rows.replaceChildren(); document.getElementById("empty-state").hidden = true;
+          document.getElementById("previous-page").hidden = true; document.getElementById("next-page").hidden = true; document.getElementById("page-label").textContent = "";
           statusLine.textContent = "Lokale gegevens worden bijgewerkt…";
-          const params = new URLSearchParams({ view: state.view, q: state.query });
+          const params = new URLSearchParams({ view, q: query, offset: String(state.offset) });
+          if (state.anchor !== null) params.set("anchor", String(state.anchor));
+          if (state.conversation) params.set("conversation", state.conversation);
+          document.getElementById("back-conversations").hidden = !state.conversation;
           try {
             const response = await fetch(`${base}api/dashboard?${params}`, {
               cache: "no-store",
-              credentials: "same-origin",
+              credentials: "omit", redirect: "error", signal: controller.signal,
               headers: { Accept: "application/json" },
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
+            if (!isCurrent()) return;
             document.getElementById("count-important").textContent = data.counts.important;
             document.getElementById("count-reply").textContent = data.counts.reply;
             document.getElementById("count-later").textContent = data.counts.later;
@@ -502,7 +549,11 @@
             document.getElementById("breakdown-reply").textContent = data.counts.reply;
             document.getElementById("breakdown-later").textContent = data.counts.later;
             document.getElementById("breakdown-other").textContent = data.counts.other;
-            document.getElementById("result-count").textContent = `${data.items.length} berichten in deze weergave`;
+            document.getElementById("result-count").textContent = `${data.pagination.total} resultaten in deze weergave`;
+            state.offset = data.pagination.offset; state.anchor = data.pagination.anchor;
+            document.getElementById("previous-page").hidden = state.offset === 0;
+            document.getElementById("next-page").hidden = !data.pagination.has_more;
+            document.getElementById("page-label").textContent = `Pagina ${Math.floor(state.offset / data.pagination.limit) + 1} van ${Math.max(1, Math.ceil(data.pagination.total / data.pagination.limit))}`;
             document.getElementById("disclosure").textContent = data.demo
               ? "Voorbeeldgegevens · lokaal overzicht"
               : "Lokaal overzicht · alleen-lezen";
@@ -510,13 +561,18 @@
               ? "Dit zijn synthetische voorbeeldgegevens; er is geen Discord-account gekoppeld."
               : "Gegevens blijven op deze computer. Dashboard is alleen-lezen.";
             document.getElementById("connection-label").textContent = data.demo ? "Voorbeeldgegevens" : "Lokale gegevens";
-            renderItems(data.items);
+            if (state.view === "Conversations" && !state.conversation) renderGroups(data.groups); else renderItems(data.items);
             renderSources(data.sources);
-            statusLine.textContent = `Bijgewerkt ${formatTime(data.generated_at)} · ververst automatisch elke 15 seconden`;
+            statusLine.textContent = `Bijgewerkt ${formatTime(data.generated_at)} · ververst automatisch elke 15 seconden${data.new_items ? " · Nieuwe berichten beschikbaar; kies Vernieuwen" : ""}`;
           } catch (_error) {
+            if (!isCurrent()) return;
+            document.getElementById("result-count").textContent = "";
+            for (const id of ["count-important", "count-reply", "count-later", "count-total", "attention-count", "breakdown-important", "breakdown-reply", "breakdown-later", "breakdown-other"]) document.getElementById(id).textContent = "—";
+            document.getElementById("sources").replaceChildren();
             statusLine.textContent = "Dashboardverbinding onderbroken. Er wordt opnieuw geprobeerd; je gegevens zijn niet gewijzigd.";
           } finally {
-            state.pending = false;
+            window.clearTimeout(timeout);
+            if (requestId === state.requestId) state.controller = null;
           }
         }
 
@@ -529,10 +585,16 @@
         });
         document.getElementById("search").addEventListener("input", (event) => {
           state.query = event.target.value.slice(0, 160);
+          state.offset = 0; state.anchor = null;
+          state.controller?.abort(); ++state.requestId; rows.replaceChildren();
           window.clearTimeout(state.searchTimer);
           state.searchTimer = window.setTimeout(refresh, 180);
         });
-        document.getElementById("refresh").addEventListener("click", refresh);
+        document.getElementById("refresh").addEventListener("click", () => { state.offset = 0; state.anchor = null; refresh(); });
+        document.getElementById("previous-page").addEventListener("click", () => { state.offset = Math.max(0, state.offset - 60); refresh(); });
+        document.getElementById("next-page").addEventListener("click", () => { state.offset += 60; refresh(); });
+        document.getElementById("back-conversations").addEventListener("click", () => { state.conversation = ""; state.offset = 0; state.anchor = null; refresh(); });
+        document.getElementById("close-context").addEventListener("click", () => { ++state.contextId; state.contextController?.abort(); document.getElementById("message-context").hidden = true; document.getElementById("context-body").replaceChildren(); document.getElementById("search").focus(); });
         document.getElementById("theme-toggle").addEventListener("click", () => {
           const root = document.documentElement;
           const light = root.dataset.theme !== "light";

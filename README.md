@@ -2,7 +2,7 @@
 
 Discord Fix is a Windows-first companion that helps people make sense of Discord information they are authorized to access. It brings available messages, follow-ups, and context into a calmer dashboard with clear source links.
 
-> **Current release: 0.4 development build.** This is a local development release, not a published or signed product. It includes a Windows desktop app, a local read-only browser dashboard, and an optional Chrome/Edge side panel. The desktop app is currently in Dutch; the browser extension interface is in English.
+> **Current release: desktop 0.4 development build / extension 0.2.0.** This is a local development release, not a published or signed product. It includes a Windows desktop app, a local browser dashboard, and an optional Chrome/Edge side panel. The desktop app and standalone dashboard are currently in Dutch; the extension controls, explanations, dates, and recovery messages are in English. Source messages and names retain their original language.
 
 ## What Discord Fix does
 
@@ -13,7 +13,7 @@ Discord Fix is a Windows-first companion that helps people make sense of Discord
 - Keeps its working database on the computer. Optional AI processing is off until configured by the user.
 - Can show the same local dashboard in a Chrome or Edge side panel next to Discord.
 
-Discord Fix is a companion, **not a replacement Discord client or a full-screen overlay**. The browser extension does not inject into, inspect, or change Discord pages. It connects only to the local read-only dashboard provided by the desktop app.
+Discord Fix is a companion, **not a replacement Discord client or a full-screen overlay**. The browser extension does not inject into, inspect, or change Discord pages. It reads the local dashboard and saves your personal follow-up choices to Discord Fix. Those choices never change or send Discord messages.
 
 ## Run from source on Windows
 
@@ -37,12 +37,16 @@ This repository does not include a ready-to-install Windows executable. To build
 The side panel is an optional, unpublished development extension. It is available in a normal Chrome or Edge browser, not in ChatGPT's built-in browser or the Discord desktop app.
 
 1. Start Discord Fix and choose **Browserdashboard**. Keep the desktop app open.
-2. Copy the complete local `http://127.0.0.1:...` dashboard address.
+2. Use **Copy private connection address** in the English connection window.
 3. Open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, and choose **Load unpacked**.
 4. Select this repository's `browser-extension` folder.
 5. Open the Discord Fix extension panel, paste the local dashboard address, and choose **Connect**. Allow its requested local-site permission.
 
-The English side panel displays an overview, the five dashboard views, and search. It refreshes while the desktop app is running. Use **Change connection** to reconnect after restarting the desktop app. Its display preferences are stored in the browser. The panel is read-only; use the desktop app to change priority or follow-up state. Each snapshot contains up to 60 matching messages with previews of up to 420 characters; narrow the search and open the original for full content. The local dashboard address contains a temporary access token, so do not share it. Close Discord Fix to stop the dashboard session.
+The English panel includes search with exact matching totals, **Previous/Next** pages, full local message context, English priority reasons, and source/freshness details. **Conversations** groups known threads and linked replies; missing relationships have an explicitly labelled channel fallback. Complete, dismiss, reopen, snooze, or change personal priority/reply status in the detail view, then use **Undo**. These actions update the local database only.
+
+Use **Since last visit** for newly received or edited local records. Read saved source-linked summaries; generate or update them in the desktop app. Choose Focus/Compact/Context presets, text sizes, themes, spacing, and metadata visibility. Pin conversations and save view/search combinations on this device. Pages have up to 60 previews of 420 characters; context retrieves full locally available text up to one million characters. Paging uses an insertion boundary; refresh to include newly imported messages. Existing edits, removals, and workflow changes remain live.
+
+Keep the desktop app open. Use **Change connection** after restarting it. The local address contains a temporary access token: keep it private. Closing Discord Fix stops the dashboard session and expires its Undo tickets. Preferences, pins, saved searches, and visit time remain in extension-local storage when you clear the connection.
 
 To create a ZIP of the extension files, run `Package-Browser-Extension.ps1`. This does not publish the extension to an extension store.
 
@@ -60,7 +64,7 @@ See the [Windows user guide — Dutch](USER-GUIDE.nl.md) and the [browser extens
 
 - Discord Fix does not use personal Discord account tokens, self-bots, hidden page scraping, or message-sending routes.
 - The browser extension has no Discord-site permission or content script. It requests optional access to `http://127.0.0.1` only when connecting to the local dashboard.
-- The desktop dashboard listens on this computer only and exposes read-only routes.
+- The desktop dashboard listens on this computer only. Reads use SQLite snapshots. Explicit local actions require the private URL, a separate session nonce, and a current item revision; stale writes are rejected. Actions have no Discord API write path.
 - Bot tokens and configured provider keys use Windows DPAPI. The message database is a local SQLite file protected by Windows account access; it does not have separate application-level encryption.
 - AI providers are not contacted until the user configures and chooses them. No model, subscription, or external service is provisioned by this repository.
 - Exports and backups can contain private conversation data. Keep them in a location you trust.
@@ -95,7 +99,7 @@ The project also contains a GitHub Actions workflow at `.github/workflows/test.y
 - This release does not replace Discord, reskin its interface, or provide an overlay over the Discord app or website.
 - Coverage depends on the data package or bot permissions provided. A data package is not a full inbox; a bot sees only authorized channels and bounded recent history.
 - The browser extension has not been published to the Chrome Web Store or Microsoft Edge Add-ons. Its HTML, controls, and connection flow have been checked in isolated Chrome with synthetic local data and simulated extension APIs. Installation, side-panel activation, and permission prompts in a real extension session remain unverified.
-- Real-account Discord, real-export, and real-provider acceptance have not been completed. Automated provider-contract checks do not establish summary quality or provider acceptance.
+- Discord navigation, Appearance, and Accessibility were inspected in an existing logged-in Chrome session on 30 September 2026. No account was created, private conversation content was used, or account setting was changed. Real-export, real-bot, and real-provider acceptance remain open. Automated provider-contract checks do not establish summary quality or provider acceptance.
 - Screen-reader acceptance has not been completed and no WCAG conformance claim is made.
 - The Windows executable is unsigned. Mobile, voice/video, general personal-DM access, and replies from Discord Fix are outside this development release.
 
@@ -105,3 +109,5 @@ The project also contains a GitHub Actions workflow at `.github/workflows/test.y
 - [Development and verification notes](DEVELOPMENT.md)
 - [Windows user guide — Dutch](USER-GUIDE.nl.md)
 - [Browser extension guide — English](BROWSER-EXTENSION.md)
+- [Live Discord UI observations](DISCORD-UI-RESEARCH.md)
+- [Improvement plan and acceptance gaps](IMPROVEMENT-ROADMAP.md)

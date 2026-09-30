@@ -94,6 +94,7 @@ class Store:
             deadline="TEXT",
             reason="TEXT NOT NULL DEFAULT '[]'",
             search_text="TEXT NOT NULL DEFAULT ''",
+            workflow_revision="INTEGER NOT NULL DEFAULT 0",
         )
         columns = {r["name"] for r in self.db.execute("PRAGMA table_info(messages)")}
         with self.db:
@@ -127,6 +128,30 @@ class Store:
             "SELECT 1 FROM sqlite_master WHERE name='messages_fts'"
         ).fetchone()
         self.db.executescript("""
+            CREATE TABLE IF NOT EXISTS browser_message_sequence (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id TEXT UNIQUE NOT NULL);
+            INSERT INTO browser_message_sequence(message_id)
+                SELECT id FROM messages WHERE NOT EXISTS(
+                    SELECT 1 FROM browser_message_sequence WHERE message_id=messages.id)
+                ORDER BY rowid;
+            CREATE TRIGGER IF NOT EXISTS messages_browser_insert AFTER INSERT ON messages BEGIN
+                INSERT INTO browser_message_sequence(message_id) VALUES(new.id);
+            END;
+            CREATE TRIGGER IF NOT EXISTS messages_browser_delete AFTER DELETE ON messages BEGIN
+                DELETE FROM browser_message_sequence WHERE message_id=old.id;
+            END;
+            CREATE TRIGGER IF NOT EXISTS messages_workflow_revision
+            AFTER UPDATE OF state,until,priority_override,reply_override,deadline,important,reply,deleted,content,edited_at,channel,guild,parent_channel,author ON messages
+            WHEN old.state IS NOT new.state OR old.until IS NOT new.until
+                OR old.priority_override IS NOT new.priority_override OR old.reply_override IS NOT new.reply_override
+                OR old.deadline IS NOT new.deadline OR old.important IS NOT new.important OR old.reply IS NOT new.reply
+                OR old.deleted IS NOT new.deleted OR old.content IS NOT new.content OR old.edited_at IS NOT new.edited_at
+                OR old.channel IS NOT new.channel OR old.guild IS NOT new.guild OR old.parent_channel IS NOT new.parent_channel
+                OR old.author IS NOT new.author
+            BEGIN
+                UPDATE messages SET workflow_revision=old.workflow_revision+1 WHERE id=new.id;
+            END;
             CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(content,channel_name,author,content='messages',content_rowid='rowid');
             CREATE TRIGGER IF NOT EXISTS messages_insert AFTER INSERT ON messages BEGIN
                 INSERT INTO messages_fts(rowid,content,channel_name,author) VALUES(new.rowid,new.content,new.channel_name,new.author);

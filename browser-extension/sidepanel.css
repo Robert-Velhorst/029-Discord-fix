@@ -100,7 +100,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .search button { position: absolute; right: 5px; display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-size: 19px; cursor: pointer; }
 .section-heading { display: flex; min-height: 29px; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
 .section-heading h1 { margin: 0; font-size: 18px; line-height: 1.25; letter-spacing: -.025em; }
-.result-count { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.result-count { color: var(--muted); font-size: 10px; text-align: right; }
 .status { min-height: 19px; margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .status[data-state="error"] { color: var(--danger); }
 .items { display: grid; gap: 8px; }
@@ -133,3 +133,22 @@ button:disabled { opacity: .6; cursor: wait; }
 @media (prefers-reduced-motion: no-preference) {
   button, a { transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease; }
 }
+
+.secondary-button { min-height: 32px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); color: var(--text); cursor: pointer; }
+.filter-tools, .pagination, .workflow-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+.filter-tools label { display: flex; align-items: center; gap: 5px; min-height: 32px; color: var(--muted); font-size: 11px; }
+.pagination { justify-content: space-between; font-size: 11px; }
+.saved-filters { margin: 10px 0; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.saved-filters summary { min-height: 28px; cursor: pointer; }
+.saved-filters label { display: block; margin: 8px 0 4px; }
+.saved-filters input, .saved-filters select { width: 100%; min-height: 34px; padding: 5px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.saved-filters button { margin-top: 8px; }
+.item .secondary-button { margin-top: 10px; }
+.detail { overflow-wrap: anywhere; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.detail h2 { font-size: 18px; }
+.detail h3 { margin-top: 18px; font-size: 13px; }
+.detail p, .detail li { line-height: 1.6; }
+.full-content { white-space: pre-wrap; font-size: var(--message-size, 12px); }
+.item-content { font-size: var(--message-size, 12px); }
+.action-feedback p { margin: 8px 0; color: var(--accent); line-height: 1.5; }
+:root[data-metadata="false"] .item-author, :root[data-metadata="false"] .item-time { display: none; }

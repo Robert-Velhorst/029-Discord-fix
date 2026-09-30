@@ -1,6 +1,6 @@
-# Development state — 26 September 2026
+# Development state — 30 September 2026
 
-The original README remains the product specification. Version 0.4 implements the local Phase 1 application paths, including adjustable display controls and a loopback-only, read-only browser dashboard; public/production acceptance is not claimed. Any client-level Discord integration remains contingent on explicit official authorization.
+The specification is `PRODUCT-SPECIFICATION.md`; setup is in `README.md`. Desktop 0.4 and extension 0.2.0 implement local companion paths and a loopback dashboard with explicit local follow-up actions. Public/production acceptance is not claimed. Historical notes below describe earlier builds; the latest scope is recorded at the end.
 
 ## Run and verify
 
@@ -24,7 +24,7 @@ The original README remains the product specification. Version 0.4 implements th
 - `vault.py`: Windows user-scoped DPAPI, no plaintext fallback, external AI keys isolated by exact endpoint.
 - `instance.py`: per-database OS lock.
 - `__main__.py`, `panels.py`, `widgets.py`, `appearance.py`: native dashboard/dialogs, adjustable light/Ash/dark/Onyx themes, high contrast, separate control/message text sizes, three row densities, persistent per-column widths, keyboard shortcuts, source management, privacy/settings, context/evidence navigation, background work, opt-in scheduler, scrollable controls and in-app notifications.
-- `web_dashboard.py`, `dashboard.html`: token-gated localhost dashboard backed by fresh SQLite read-only connections, a restricted GET-only API, no cross-origin access, and automatic browser refresh. Synthetic preview rows have no Discord links.
+- `web_dashboard.py`, `web_data.py`, `web_workflow.py`, `dashboard.html`: loopback snapshots, pagination, details and saved-summary reading; nonce/revision/origin-checked local follow-ups with Undo; no CORS for ordinary pages or Discord write route. Demo mode removes links and disables writes.
 - `diagnostics.py`: opt-in packaged smoke test using only a temporary synthetic database, including the browser dashboard.
 
 ## Verification scope
@@ -105,3 +105,16 @@ Use a user-authorized real export, installed server bot and chosen AI provider t
 - Rendered QA used isolated, headless Chrome 154.0.8037.58 through the existing bundled Playwright runtime, a temporary synthetic SQLite database, and the real read-only dashboard HTTP server. Extension storage and permission APIs were simulated; the test harness supplied cross-origin access normally granted by extension host permissions. No backend CORS setting was changed. The Browser plugin's `browser` skill was unavailable, so regular Playwright was used.
 - Verified initial/invalid connection states, all six navigation controls, search/clear, theme and density, English source status, priority-count visibility, disconnect clearing, and keyboard focus recovery. Screenshots at 280, 375, and 768 pixels showed no page-level horizontal overflow. There were no page or console errors in the successful run. Screenshots and temporary QA scripts are outside the repository.
 - The Chrome API reference was checked for the toolbar/side-panel behavior: https://developer.chrome.com/docs/extensions/reference/api/sidePanel. Actual extension installation, side-panel activation, permission prompts, Edge rendering, screen-reader acceptance, and real Discord/provider access remain unverified. There is no visual regression baseline or WCAG conformance claim; no user browser profile or extension store was changed.
+
+## English context and workflow release — 30 September 2026
+
+- Extension 0.2.0 adds full local context, exact totals/pagination, English rule codes/reasons, known thread/reply grouping with a labelled channel fallback, and coverage/freshness. Saved-summary reading covers personal/conversation/channel/server levels, paginated entries, citations, and corrections. It does not generate summaries or contact a provider.
+- Explicit local Complete/Dismiss/Reopen/Snooze/priority/reply actions require a session nonce, expected revision, valid host, and allowed supplied origin. Transactions guard concurrent changes. Monotonic per-item revisions prevent Undo after an intervening change, including a change back to the previous value. Tickets are session-only and bounded to 500. Ambiguous failed saves are not retried automatically.
+- An additive sequence table keeps page insertion boundaries after deletion of the highest message row. Deleted IDs leave that table. Edits, removals, expiry, and follow-up changes remain live. App restart does not invent new messages.
+- Saved summary evidence is rechecked against all saved source hashes, exclusions, deleted rows, bot availability, and citation quotes. Changed or excluded evidence hides the whole summary, including uncited source text that may have influenced it. This is not a semantic truth validator.
+- Added local pins, 20 named view/search combinations, previous-visit filtering, Focus/Compact/Context presets, text sizes, and metadata visibility. The desktop browser action opens an English manual pairing window with an explicit copy button. No native host, signing, publication, or automatic installation was added.
+- The standalone Dutch dashboard now cancels/identifies requests, times out, clears obsolete results, pages all matches, reads full context, and distinguishes groups. Its interface offers reading; panel workflow uses the restricted action endpoint.
+- Verification: 54 Python tests, 18 JavaScript runtime tests, Ruff lint/format, JavaScript syntax, archive contents, and rebuilt Windows executable/self-test. The executable is unsigned. The archive contains exactly five extension resources.
+- Chrome UI checks used CUA, 145 synthetic records, and real local HTTP snapshots/details/summary/action routes. Storage/permission APIs were simulated in a labelled preview outside the repository. Observed full context/English reasons, Complete/Undo, coverage, grouped/pinned results, summary citations, pagination, and Focus text size/count visibility. No warning/error console entries were captured there.
+- Screenshot capture timed out; viewport overrides did not produce the requested 320 CSS-pixel width. This pass does not establish screenshot or 320-pixel reflow acceptance. Earlier screenshots are not proof for this build. Real installation/activation, permission prompts, restart/revocation recovery, Edge, screen readers, and real sources remain gaps. Installation awaits the user's response to the browser confirmation.
+- Discord navigation/Appearance/Accessibility were inspected in an existing login without creating an account, changing settings, or reading private chat contents. See `DISCORD-UI-RESEARCH.md`. This provides no general ingestion access and does not implement the overlay.

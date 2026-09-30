@@ -23,6 +23,9 @@ const DEFAULT_PREFERENCES = {
   density: "comfortable",
   showCounts: true,
   showSources: false,
+  textSize: 14,
+  showMetadata: true,
+  preset: "custom",
 };
 
 const ui = Object.fromEntries(
@@ -32,6 +35,10 @@ const ui = Object.fromEntries(
     "show-sources", "counts", "count-important", "count-reply", "count-later", "search-form",
     "search", "clear-search", "view-title", "result-count", "status", "items", "sources",
     "source-count", "source-list", "refresh", "connect", "connection-error", "change-connection",
+    "preset", "text-size", "show-metadata", "since-visit", "pinned-only", "show-summary",
+    "saved-view", "saved-name", "save-view", "remove-view", "setup-hint", "action-status",
+    "undo-action", "back-conversations", "pagination", "previous-page", "next-page", "page-label",
+    "detail", "detail-content", "close-detail",
   ].map((id) => [id, document.getElementById(id)]),
 );
 
@@ -43,6 +50,19 @@ const state = {
   refreshTimer: 0,
   requestId: 0,
   controller: null,
+  detailController: null,
+  offset: 0,
+  anchor: null,
+  conversation: "",
+  pins: [],
+  savedViews: [],
+  lastVisit: "",
+  visitRecorded: false,
+  workflow: { enabled: false, nonce: "" },
+  undo: null,
+  acting: false,
+  connectionEpoch: 0,
+  detailId: "",
 };
 
 function normalizePreferences(value = {}) {
@@ -51,6 +71,9 @@ function normalizePreferences(value = {}) {
     density: ["comfortable", "compact"].includes(value?.density) ? value.density : "comfortable",
     showCounts: typeof value?.showCounts === "boolean" ? value.showCounts : true,
     showSources: typeof value?.showSources === "boolean" ? value.showSources : false,
+    showMetadata: typeof value?.showMetadata === "boolean" ? value.showMetadata : true,
+    textSize: [12, 14, 18, 22].includes(value?.textSize) ? value.textSize : 14,
+    preset: ["custom", "focus", "compact", "context"].includes(value?.preset) ? value.preset : "custom",
   };
 }
 
@@ -96,6 +119,11 @@ function applyPreferences() {
   ui["show-sources"].checked = showSources;
   ui.counts.hidden = !showCounts;
   ui.sources.hidden = !showSources || !ui["source-list"].childElementCount;
+  ui["text-size"].value = String(state.preferences.textSize);
+  ui["show-metadata"].checked = state.preferences.showMetadata;
+  ui.preset.value = state.preferences.preset;
+  document.documentElement.style.setProperty("--message-size", `${state.preferences.textSize}px`);
+  document.documentElement.dataset.metadata = String(state.preferences.showMetadata);
 }
 
 function formatDate(value) {
@@ -191,6 +219,12 @@ function renderItems(items) {
       anchor.textContent = "Open original in Discord";
       article.append(anchor);
     }
+    const context = document.createElement("button");
+    context.type = "button";
+    context.className = "secondary-button";
+    context.textContent = "Why this appears and full context";
+    context.addEventListener("click", () => loadDetail(item.id));
+    article.append(context);
     ui.items.append(article);
   }
 }
@@ -218,7 +252,9 @@ function renderSources(sources) {
 }
 
 function updateViewControls() {
-  ui["view-title"].textContent = VIEW_TITLES[state.view] || VIEW_TITLES.Overview;
+  ui["view-title"].textContent = state.conversation ? "Conversation context" : VIEW_TITLES[state.view] || VIEW_TITLES.Overview;
+  ui["pinned-only"].disabled = state.view !== "Conversations";
+  ui["back-conversations"].hidden = !state.conversation;
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.view === state.view));
   });
@@ -226,6 +262,12 @@ function updateViewControls() {
 
 async function loadDashboard() {
   if (!state.baseUrl) return;
+  state.detailController?.abort();
+  state.detailId = "";
+  ui.detail.hidden = true;
+  ui["detail-content"].replaceChildren();
+  ui.items.hidden = false;
+  ui.pagination.hidden = true;
   state.controller?.abort();
   const controller = new AbortController();
   state.controller = controller;
@@ -233,15 +275,21 @@ async function loadDashboard() {
   const baseUrl = state.baseUrl;
   const view = state.view;
   const search = ui.search.value.trim();
+  const offset = state.offset;
+  const conversation = state.conversation;
   const isCurrent = () => requestId === state.requestId && baseUrl === state.baseUrl &&
-    view === state.view && search === ui.search.value.trim();
+    view === state.view && search === ui.search.value.trim() && offset === state.offset && conversation === state.conversation;
   const timeout = window.setTimeout(() => controller.abort(), 10000);
   ui.refresh.disabled = true;
   ui.items.replaceChildren();
   ui["result-count"].textContent = "";
   ui.items.setAttribute("aria-busy", "true");
   setStatus("Refreshing dashboard…");
-  const query = new URLSearchParams({ view, q: search });
+  const query = new URLSearchParams({ view, q: search, offset: String(offset) });
+  if (state.anchor !== null) query.set("anchor", String(state.anchor));
+  if (conversation) query.set("conversation", conversation);
+  if (ui["since-visit"].checked && state.lastVisit) query.set("since", state.lastVisit);
+  if (ui["pinned-only"].checked && state.view === "Conversations") query.set("pins", state.pins.join(","));
   try {
     const response = await fetch(`${baseUrl}api/dashboard?${query}`, {
       cache: "no-store",
@@ -257,16 +305,33 @@ async function loadDashboard() {
     if (!data || !Array.isArray(data.items) || !data.counts || !Array.isArray(data.sources)) {
       throw new Error("The local server returned an unrecognized Discord Fix dashboard.");
     }
-    renderItems(data.items);
+    state.workflow = data.workflow || { enabled: false, nonce: "" };
+    if (state.view === "Conversations" && !state.conversation && Array.isArray(data.groups)) renderGroups(data.groups);
+    else renderItems(data.items);
     renderSources(data.sources);
     ui["count-important"].textContent = String(Number(data.counts.important) || 0);
     ui["count-reply"].textContent = String(Number(data.counts.reply) || 0);
     ui["count-later"].textContent = String(Number(data.counts.later) || 0);
-    const total = Array.isArray(data.items) ? data.items.length : 0;
-    ui["result-count"].textContent = total === 60 ? "Showing first 60 messages" :
-      `${total} ${total === 1 ? "message" : "messages"}`;
+    const total = data.pagination?.total ?? data.items.length;
+    const noun = state.view === "Conversations" && !state.conversation ? (total === 1 ? "conversation" : "conversations") : (total === 1 ? "message" : "messages");
+    ui["result-count"].textContent = `${total} ${noun}`;
+    if (data.pagination) {
+      state.offset = data.pagination.offset;
+      state.anchor = data.pagination.anchor;
+      ui.pagination.hidden = total <= data.pagination.limit;
+      ui["previous-page"].disabled = state.offset === 0;
+      ui["next-page"].disabled = !data.pagination.has_more;
+      ui["page-label"].textContent = `Page ${Math.floor(state.offset / data.pagination.limit) + 1} of ${Math.max(1, Math.ceil(total / data.pagination.limit))}`;
+    }
+    ui["setup-hint"].hidden = data.sources.length > 0;
+    if (!state.visitRecorded) {
+      state.visitRecorded = true;
+      chrome.storage.local.set({ lastVisit: new Date().toISOString() }).catch(() => {
+        ui["action-status"].textContent = "Could not save your visit time. Since last visit may be unavailable next time.";
+      });
+    }
     const generated = formatDate(data.generated_at);
-    setStatus(generated ? `Updated ${generated}` : "Dashboard updated.");
+    setStatus((generated ? `Updated ${generated}` : "Dashboard updated.") + (data.new_items ? " New messages are available; refresh to include them." : ""));
   } catch (error) {
     if (!isCurrent()) return;
     ui["source-list"].replaceChildren();
@@ -301,12 +366,18 @@ function showConnected() {
 }
 
 async function initialize() {
-  state.refreshTimer = window.setInterval(loadDashboard, 30000);
+  state.refreshTimer = window.setInterval(() => { if (ui.detail.hidden && !state.acting) loadDashboard(); }, 30000);
   const stored = await chrome.storage.local.get([
-    "dashboardUrl", "preferences", "view",
+    "dashboardUrl", "preferences", "view", "pins", "savedViews", "lastVisit",
   ]);
   state.preferences = normalizePreferences(stored.preferences);
   state.view = Object.hasOwn(VIEW_TITLES, stored.view) ? stored.view : "Overview";
+  state.pins = Array.isArray(stored.pins) ? stored.pins.filter((id) => typeof id === "string" && /^[a-f0-9]{64}$/.test(id)).slice(0, 100) : [];
+  state.savedViews = Array.isArray(stored.savedViews) ? stored.savedViews.filter((v) => typeof v?.name === "string" && v.name.length <= 50 && Object.hasOwn(VIEW_TITLES, v.view) && typeof v.q === "string" && v.q.length <= 160).slice(0, 20) : [];
+  state.lastVisit = typeof stored.lastVisit === "string" && /(?:Z|[+-]\d{2}:\d{2})$/.test(stored.lastVisit) && Number.isFinite(Date.parse(stored.lastVisit)) && Date.parse(stored.lastVisit) <= Date.now() ? stored.lastVisit : "";
+  ui["since-visit"].disabled = !state.lastVisit;
+  ui["since-visit"].title = state.lastVisit ? `Since ${formatDate(state.lastVisit)}` : "Available after your next visit";
+  renderSavedViews();
   applyPreferences();
   updateViewControls();
   const savedUrl = typeof stored.dashboardUrl === "string" ? stored.dashboardUrl : "";
@@ -358,6 +429,7 @@ ui["connection-form"].addEventListener("submit", async (event) => {
       throw new Error("Could not save the connection in this browser. Try connecting again.");
     }
     state.baseUrl = baseUrl;
+    ++state.connectionEpoch;
     showConnected();
     ui.search.focus();
   } catch (error) {
@@ -377,11 +449,14 @@ ui["settings-toggle"].addEventListener("click", () => {
   ui.preferences.hidden = expanded;
 });
 
-ui["refresh"].addEventListener("click", loadDashboard);
+ui["refresh"].addEventListener("click", () => { resetPage(); loadDashboard(); });
 
 document.querySelectorAll("[data-view]").forEach((button) => {
   button.addEventListener("click", async () => {
     state.view = button.dataset.view;
+    state.conversation = "";
+    ui["pinned-only"].checked = false;
+    resetPage();
     updateViewControls();
     loadDashboard();
     try {
@@ -394,17 +469,20 @@ document.querySelectorAll("[data-view]").forEach((button) => {
 
 ui["search-form"].addEventListener("submit", (event) => {
   event.preventDefault();
+  resetPage();
   loadDashboard();
 });
 
 ui.search.addEventListener("input", () => {
   ui["clear-search"].hidden = !ui.search.value;
+  resetPage();
   window.clearTimeout(state.searchTimer);
   state.searchTimer = window.setTimeout(loadDashboard, 250);
 });
 
 ui["clear-search"].addEventListener("click", () => {
   ui.search.value = "";
+  resetPage();
   ui["clear-search"].hidden = true;
   loadDashboard();
   ui.search.focus();
@@ -416,6 +494,9 @@ async function savePreferences() {
     density: ui.density.value,
     showCounts: ui["show-counts"].checked,
     showSources: ui["show-sources"].checked,
+    textSize: Number(ui["text-size"].value),
+    showMetadata: ui["show-metadata"].checked,
+    preset: ui.preset.value,
   };
   applyPreferences();
   try {
@@ -425,14 +506,29 @@ async function savePreferences() {
   }
 }
 
-[ui.theme, ui.density, ui["show-counts"], ui["show-sources"]].forEach((control) => {
-  control.addEventListener("change", savePreferences);
+[ui.theme, ui.density, ui["show-counts"], ui["show-sources"], ui["text-size"], ui["show-metadata"]].forEach((control) => {
+  control.addEventListener("change", () => { ui.preset.value = "custom"; savePreferences(); });
 });
 
 async function disconnect() {
+  ++state.connectionEpoch;
   ++state.requestId;
   state.controller?.abort();
   state.controller = null;
+  state.detailController?.abort();
+  state.detailId = "";
+  state.workflow = { enabled: false, nonce: "" };
+  state.undo = null;
+  state.lastVisit = "";
+  state.visitRecorded = false;
+  state.conversation = "";
+  resetPage();
+  ui.detail.hidden = true;
+  ui["detail-content"].replaceChildren();
+  ui["undo-action"].hidden = true;
+  ui["action-status"].textContent = "";
+  ui["since-visit"].checked = false;
+  ui["since-visit"].disabled = true;
   state.baseUrl = "";
   window.clearTimeout(state.searchTimer);
   ui.items.replaceChildren();
@@ -470,6 +566,210 @@ async function disconnect() {
 
 ui.disconnect.addEventListener("click", disconnect);
 ui["change-connection"].addEventListener("click", disconnect);
+
+function resetPage() {
+  state.offset = 0;
+  state.anchor = null;
+}
+
+function node(tag, text, className = "") {
+  const element = document.createElement(tag);
+  if (text !== undefined) element.textContent = text;
+  element.className = className;
+  return element;
+}
+
+function button(text, action) {
+  const element = node("button", text, "secondary-button");
+  element.type = "button";
+  element.addEventListener("click", action);
+  return element;
+}
+
+function renderGroups(groups) {
+  ui.items.replaceChildren();
+  if (!groups.length) ui.items.append(node("p", "No matching conversations. Try another search or clear the pinned filter.", "empty-state"));
+  for (const group of groups) {
+    const card = node("article", undefined, "item");
+    card.append(node("h2", group.channel_name));
+    card.append(node("p", `${group.count} ${group.count === 1 ? "message" : "messages"} · ${group.open_replies} open ${group.open_replies === 1 ? "follow-up" : "follow-ups"}`));
+    const kind = { thread: "Thread", reply: "Linked replies", conversation: "Conversation", channel: "Channel grouping; separate topics may be present" };
+    card.append(node("p", kind[group.kind] || "Conversation"));
+    card.append(node("p", (group.participants || []).join(", ")));
+    card.append(button("Open conversation", () => {
+      state.conversation = group.id; resetPage(); updateViewControls(); loadDashboard();
+    }));
+    card.append(button(state.pins.includes(group.id) ? "Unpin conversation" : "Pin conversation", async () => {
+      state.pins = state.pins.includes(group.id) ? state.pins.filter((id) => id !== group.id) : [...state.pins.slice(-99), group.id];
+      try { await chrome.storage.local.set({ pins: state.pins }); }
+      catch { ui["action-status"].textContent = "Could not save pinned conversations for next time."; }
+      loadDashboard();
+    }));
+    ui.items.append(card);
+  }
+}
+
+async function localGet(resource, controller) {
+  const response = await fetch(`${state.baseUrl}api/${resource}`, {
+    cache: "no-store", credentials: "omit", redirect: "error", signal: controller.signal,
+  });
+  if (!response.ok) throw new Error("This local context is unavailable. Refresh or reconnect.");
+  return response.json();
+}
+
+function openDetail(id) {
+  state.detailController?.abort();
+  const controller = new AbortController();
+  state.detailController = controller;
+  state.controller?.abort(); ++state.requestId;
+  ui.refresh.disabled = false; state.detailId = id;
+  ui.detail.hidden = false; ui.items.hidden = true; ui.pagination.hidden = true;
+  ui["detail-content"].replaceChildren(node("p", "Loading local context…"));
+  return controller;
+}
+
+async function loadDetail(ident) {
+  if (!state.baseUrl) return;
+  const baseUrl = state.baseUrl;
+  const controller = openDetail(ident);
+  const timeout = window.setTimeout(() => controller.abort(), 10000);
+  try {
+    const item = await localGet(`message?${new URLSearchParams({ id: ident })}`, controller);
+    if (baseUrl !== state.baseUrl || state.detailController !== controller || controller.signal.aborted) return;
+    const content = ui["detail-content"];
+    content.replaceChildren();
+    const title = node("h2", item.channel_name || "Message context"); title.tabIndex = -1;
+    content.append(title, node("p", `${item.author || "Unknown author"} · ${formatDate(item.timestamp)}`));
+    content.append(node("p", item.deleted ? "Deleted at the source" : item.content, "full-content"));
+    if (item.content_truncated) content.append(node("p", "This unusually large message is shortened; open the original for more."));
+    content.append(node("h3", "Why this appears"));
+    const reasons = node("ul");
+    for (const reason of item.reasons || []) reasons.append(node("li", reason.text));
+    content.append(reasons, node("h3", "Source and coverage"));
+    const source = item.source || {};
+    content.append(node("p", `${source.name || "Unavailable source"} · ${Object.hasOwn(SOURCE_STATUS_TITLES, source.status) ? SOURCE_STATUS_TITLES[source.status] : "Unknown status"}`));
+    content.append(node("p", source.coverage || "Coverage unavailable."));
+    content.append(node("p", `Server ID: ${item.guild || "Not provided"} · Channel ID: ${item.channel || "Not provided"}`));
+    content.append(node("p", `Imported or received: ${formatDate(item.imported_at)} · Last source sync: ${formatDate(source.last_sync) || "Not recorded"}`));
+    if (item.until) content.append(node("p", `Postponed until ${formatDate(item.until)}`));
+    const link = safeDiscordUrl(item.url);
+    if (link) {
+      const anchor = node("a", "Open original in Discord", "original-link");
+      anchor.href = link; anchor.target = "_blank"; anchor.rel = "noopener noreferrer"; content.append(anchor);
+    }
+    if (state.workflow.enabled && !item.deleted) {
+      content.append(node("h3", "Local follow-up"), node("p", "These actions update Discord Fix only. They do not send or change Discord messages."));
+      const actions = node("div", undefined, "workflow-actions");
+      for (const [label, action] of [[item.state === "open" ? "Complete" : "Reopen", item.state === "open" ? "complete" : "reopen"], ["Dismiss", "dismiss"], [item.important ? "Remove priority" : "Mark important", "important"], [item.reply ? "No reply needed" : "Needs reply", "reply"]]) actions.append(button(label, () => sendAction(item, action)));
+      const label = node("label", "Postpone for "); const duration = node("select");
+      for (const [minutes, text] of [[60, "1 hour"], [1440, "24 hours"], [10080, "1 week"]]) {
+        const option = node("option", text); option.value = String(minutes); duration.append(option);
+      }
+      label.append(duration); actions.append(label, button("Snooze", () => sendAction(item, "later", { minutes: Number(duration.value) }))); content.append(actions);
+    }
+    content.append(button("Read saved conversation summary", () => loadSummary("conversation", item.conversation || item.channel)));
+    content.append(button("Read saved channel summary", () => loadSummary("channel", item.parent_channel || item.channel)));
+    if (item.guild && item.guild !== "@me") content.append(button("Read saved server summary", () => loadSummary("server", item.guild)));
+    title.focus();
+  } catch {
+    if (baseUrl === state.baseUrl && state.detailController === controller) ui["detail-content"].replaceChildren(node("p", controller.signal.aborted ? "Context request timed out. Try again." : "Could not load this local context. Refresh or reconnect."));
+  } finally { window.clearTimeout(timeout); }
+}
+
+async function sendAction(item, action, extra = {}) {
+  if (state.acting || !state.baseUrl || !state.workflow.enabled) return;
+  state.acting = true;
+  const baseUrl = state.baseUrl;
+  const epoch = state.connectionEpoch;
+  const isCurrent = () => baseUrl === state.baseUrl && epoch === state.connectionEpoch;
+  ui["action-status"].textContent = "Saving local follow-up…";
+  const controller = new AbortController(); const timeout = window.setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(`${baseUrl}api/workflow`, {
+      method: "POST", credentials: "omit", redirect: "error", cache: "no-store",
+      headers: { "Content-Type": "application/json", "X-Discord-Fix-Nonce": state.workflow.nonce },
+      body: JSON.stringify({ id: item.id, revision: item.revision, action, ...extra }), signal: controller.signal,
+    });
+    if (!isCurrent()) return;
+    if (!response.ok) throw new Error(response.status === 409 ? "This item changed. Refresh before trying again." : "Could not confirm the action. Refresh and check its state before retrying.");
+    const result = await response.json();
+    if (!isCurrent()) return;
+    state.undo = result.undo ? result : null; ui["undo-action"].hidden = !state.undo;
+    ui["action-status"].textContent = action === "undo" ? "Local action undone." : "Local follow-up saved. You can undo this action.";
+    resetPage(); await loadDashboard();
+  } catch (error) {
+    if (isCurrent()) ui["action-status"].textContent = error.name === "Error" ? error.message : "Could not confirm the action. Refresh and check its state before retrying.";
+  } finally { window.clearTimeout(timeout); state.acting = false; }
+}
+
+async function loadSummary(scope = "personal", target = "*", offset = 0) {
+  if (!state.baseUrl) return;
+  const baseUrl = state.baseUrl; const controller = openDetail("summary");
+  const timeout = window.setTimeout(() => controller.abort(), 10000);
+  try {
+    const data = await localGet(`summaries?${new URLSearchParams({ scope, target, offset: String(offset) })}`, controller);
+    if (baseUrl !== state.baseUrl || controller !== state.detailController || controller.signal.aborted) return;
+    const content = ui["detail-content"]; const title = node("h2", "Saved context summary"); title.tabIndex = -1;
+    content.replaceChildren(title);
+    if (!data.available) content.append(node("p", data.needs_refresh ? "This summary needs a refresh after its sources changed. Refresh summaries in the desktop app." : "No saved summary yet. Generate it in the desktop app; local extraction works without an AI provider."));
+    else {
+      content.append(node("p", `Generated ${formatDate(data.generated_at)} · ${data.scope}`), node("p", data.coverage));
+      if (data.correction) content.append(node("p", `Your correction: ${data.correction}`));
+      for (const entry of data.entries) {
+        const categories = { topics: "Topics", facts: "Source statements", decisions: "Possible decisions", questions: "Questions", actions: "Possible actions", uncertainty: "Uncertainty" };
+        const block = node("article", undefined, "item"); block.append(node("h3", categories[entry.category] || "Context"), node("p", entry.text), node("p", entry.basis));
+        for (const citation of entry.citations) block.append(button("Inspect cited message", () => loadDetail(citation.id)), node("blockquote", citation.quote));
+        content.append(block);
+      }
+      if (offset > 0) content.append(button("Previous summary entries", () => loadSummary(scope, target, Math.max(0, offset - 30))));
+      if (data.has_more) content.append(button("More summary entries", () => loadSummary(scope, target, offset + 30)));
+    }
+    title.focus();
+  } catch {
+    if (baseUrl === state.baseUrl && controller === state.detailController) ui["detail-content"].replaceChildren(node("p", "Could not load the saved summary. Refresh or reconnect."));
+  } finally { window.clearTimeout(timeout); }
+}
+
+function renderSavedViews() {
+  const placeholder = node("option", "Choose a view"); placeholder.value = "";
+  ui["saved-view"].replaceChildren(placeholder);
+  state.savedViews.forEach((view, index) => { const option = node("option", view.name); option.value = String(index); ui["saved-view"].append(option); });
+}
+
+ui["save-view"].addEventListener("click", async () => {
+  const name = ui["saved-name"].value.trim();
+  if (!name) { ui["action-status"].textContent = "Enter a name for this view."; ui["saved-name"].focus(); return; }
+  const view = { name: name.slice(0, 50), view: state.view, q: ui.search.value.slice(0, 160) };
+  state.savedViews = [...state.savedViews.filter((v) => v.name !== view.name).slice(-19), view];
+  try { await chrome.storage.local.set({ savedViews: state.savedViews }); renderSavedViews(); ui["action-status"].textContent = "View saved on this device."; }
+  catch { ui["action-status"].textContent = "Could not save this view."; }
+});
+ui["saved-view"].addEventListener("change", () => {
+  if (ui["saved-view"].value === "") return;
+  const view = state.savedViews[Number(ui["saved-view"].value)]; if (!view) return;
+  state.view = view.view; state.conversation = ""; ui.search.value = view.q;
+  ui["clear-search"].hidden = !view.q; ui["pinned-only"].checked = false;
+  resetPage(); updateViewControls(); loadDashboard();
+});
+ui["remove-view"].addEventListener("click", async () => {
+  if (ui["saved-view"].value === "") return;
+  state.savedViews.splice(Number(ui["saved-view"].value), 1);
+  try { await chrome.storage.local.set({ savedViews: state.savedViews }); renderSavedViews(); ui["action-status"].textContent = "Saved view removed."; }
+  catch { ui["action-status"].textContent = "Could not remove the saved view from storage."; }
+});
+ui.preset.addEventListener("change", () => {
+  const presets = { focus: { density: "comfortable", showCounts: false, showSources: false, showMetadata: false, textSize: 18 }, compact: { density: "compact", showCounts: true, showSources: false, showMetadata: true, textSize: 12 }, context: { density: "comfortable", showCounts: true, showSources: true, showMetadata: true, textSize: 14 } };
+  if (Object.hasOwn(presets, ui.preset.value)) state.preferences = { ...state.preferences, ...presets[ui.preset.value], preset: ui.preset.value };
+  applyPreferences(); savePreferences();
+});
+ui["previous-page"].addEventListener("click", () => { state.offset = Math.max(0, state.offset - 60); loadDashboard(); });
+ui["next-page"].addEventListener("click", () => { state.offset += 60; loadDashboard(); });
+ui["close-detail"].addEventListener("click", () => { state.detailController?.abort(); loadDashboard(); ui.search.focus(); });
+ui["show-summary"].addEventListener("click", () => loadSummary());
+ui["since-visit"].addEventListener("change", () => { resetPage(); loadDashboard(); });
+ui["pinned-only"].addEventListener("change", () => { resetPage(); loadDashboard(); });
+ui["back-conversations"].addEventListener("click", () => { state.conversation = ""; resetPage(); updateViewControls(); loadDashboard(); });
+ui["undo-action"].addEventListener("click", () => { if (state.undo) sendAction(state.undo, "undo", { undo: state.undo.undo }); });
 
 matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
   if (state.preferences.theme === "system") applyPreferences();

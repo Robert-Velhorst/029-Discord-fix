@@ -11,7 +11,7 @@ class BrowserExtensionTests(unittest.TestCase):
         manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
 
         self.assertEqual(manifest["manifest_version"], 3)
-        self.assertEqual(manifest["version"], "0.1.2")
+        self.assertEqual(manifest["version"], "0.2.0")
         self.assertEqual(set(manifest["permissions"]), {"sidePanel", "storage"})
         self.assertEqual(manifest["optional_host_permissions"], ["http://127.0.0.1/*"])
         self.assertNotIn("host_permissions", manifest)
@@ -47,7 +47,7 @@ class BrowserExtensionTests(unittest.TestCase):
         self.assertIn('new Intl.DateTimeFormat("en-GB"', script)
         self.assertIn("SOURCE_STATUS_TITLES[source.status]", script)
         self.assertNotIn("source.label", script)
-        self.assertIn("read-only dashboard alongside discord", manifest["description"].lower())
+        self.assertIn("personal follow-ups alongside discord", manifest["description"].lower())
 
         for dutch_phrase in (
             "alleen-lezen",

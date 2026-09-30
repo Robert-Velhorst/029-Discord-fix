@@ -18,6 +18,7 @@ const deferred = () => {
 
 class Element {
   constructor() {
+    this.style = { setProperty() {} };
     this.dataset = {};
     this.attributes = {};
     this.children = [];
@@ -40,9 +41,9 @@ class Element {
   focus() { this.focused = true; }
 }
 
-async function fixture({ stored = {}, granted = true, fetch, storageError = false } = {}) {
-  const elements = Object.fromEntries([...page.matchAll(/id="([^"]+)"/g)].map((match) => [match[1], new Element()]));
-  const views = [...page.matchAll(/data-view="([^"]+)"/g)].map((match) => {
+async function fixture({ stored = {}, granted = true, fetch, storageError = false, html = page, js = script } = {}) {
+  const elements = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map((match) => [match[1], new Element()]));
+  const views = [...html.matchAll(/data-view="([^"]+)"/g)].map((match) => {
     const button = new Element();
     button.dataset.view = match[1];
     return button;
@@ -56,9 +57,10 @@ async function fixture({ stored = {}, granted = true, fetch, storageError = fals
       getElementById: (id) => elements[id],
       querySelectorAll: () => views,
       createElement: () => new Element(),
+      addEventListener() {},
     },
     matchMedia: () => ({ matches: false, addEventListener() {} }),
-    window: { setTimeout: () => ++timeoutId, clearTimeout() {}, setInterval() {} },
+    window: { location: { pathname: "/test_dashboard_token_123456789/" }, setTimeout: () => ++timeoutId, clearTimeout() {}, setInterval() {} },
     chrome: {
       storage: { local: {
         get: async () => stored,
@@ -72,7 +74,7 @@ async function fixture({ stored = {}, granted = true, fetch, storageError = fals
       return fetch ? fetch(address, options) : Promise.resolve(response("example"));
     },
   });
-  vm.runInContext(script, context);
+  vm.runInContext(js, context);
   await tick();
   return { elements, views, calls, context, run: (expression) => vm.runInContext(expression, context) };
 }
@@ -194,4 +196,92 @@ test("expired dashboard leaves a visible recovery message and no stale rows", as
   assert.equal(f.elements.items.childElementCount, 0);
   assert.equal(f.elements["count-important"].textContent, "—");
   assert.equal(f.elements.refresh.disabled, false);
+});
+
+function snapshotResponse(overrides = {}) {
+  return { ok: true, json: async () => ({
+    items: [{ id: "101", content: "Preview text", state: "open", channel_name: "Test channel" }],
+    sources: [], counts: { important: 1, reply: 2, later: 0, total: 145, other: 142 },
+    generated_at: "2026-09-30T12:00:00Z", groups: [],
+    pagination: { offset: 0, limit: 60, total: 145, anchor: 145, has_more: true },
+    workflow: { enabled: true, nonce: "session_nonce" }, ...overrides,
+  }) };
+}
+
+test("pagination preserves the boundary and shows the full matching count", async () => {
+  const f = await fixture({ stored: { dashboardUrl: url }, fetch: async (address) => snapshotResponse({ pagination: { offset: Number(new URL(address).searchParams.get("offset")), limit: 60, total: 145, anchor: 145, has_more: true } }) });
+  assert.equal(f.elements["result-count"].textContent, "145 messages");
+  assert.equal(f.elements["page-label"].textContent, "Page 1 of 3");
+  f.elements["next-page"].listeners.click(); await tick();
+  const next = new URL(f.calls[1].address);
+  assert.equal(next.searchParams.get("offset"), "60");
+  assert.equal(next.searchParams.get("anchor"), "145");
+  assert.equal(f.elements["page-label"].textContent, "Page 2 of 3");
+});
+
+test("details show full content, English reasons and scoped saved summaries", async () => {
+  const f = await fixture({ stored: { dashboardUrl: url }, fetch: async (address) => address.includes("api/message") ? { ok: true, json: async () => ({ id: "101", channel: "123", guild: "456", conversation: "123", channel_name: "Planning", content: "Full context " + "x".repeat(1000), reasons: [{text:"You marked this as important."}], source: {name:"Test export",status:"imported",coverage:"Own sent messages only."}, state:"open", revision:"rev" }) } : snapshotResponse() });
+  await f.run('loadDetail("101")');
+  assert.equal(f.elements.detail.hidden, false);
+  assert.match(f.elements["detail-content"].textContent, /Full context.*You marked this as important/);
+  assert.match(f.elements["detail-content"].textContent, /Imported.*Own sent messages/);
+  assert.match(f.elements["detail-content"].textContent, /Read saved server summary/);
+  assert.match(f.elements["detail-content"].textContent, /They do not send or change Discord messages/);
+});
+
+test("explicit local actions use the session nonce and provide Undo", async () => {
+  const f = await fixture({ stored: { dashboardUrl: url }, fetch: async (_address, options) => options.method === "POST" ? { ok: true, json: async () => ({id:"101", revision:"new_rev", undo:"undo_ticket"}) } : snapshotResponse() });
+  await f.run('sendAction({id:"101",revision:"rev"}, "complete")');
+  const post = f.calls.find((call) => call.options.method === "POST");
+  assert.equal(post.options.headers["X-Discord-Fix-Nonce"], "session_nonce");
+  assert.equal(JSON.parse(post.options.body).action, "complete");
+  assert.equal(f.elements["undo-action"].hidden, false);
+  assert.match(f.elements["action-status"].textContent, /Local follow-up saved/);
+});
+
+test("an old action cannot restore state after reconnecting to the same URL", async () => {
+  const pending = deferred();
+  const f = await fixture({ stored: { dashboardUrl: url }, fetch: async (_address, options) => options.method === "POST" ? pending.promise : snapshotResponse() });
+  const action = f.run('sendAction({id:"101",revision:"rev"}, "complete")');
+  await f.run("disconnect()");
+  f.run(`state.baseUrl = ${JSON.stringify(url)}; ++state.connectionEpoch`);
+  pending.resolve({ok:true,json:async()=>({id:"101",revision:"new_rev",undo:"private_old_ticket"})});
+  await action;
+  assert.equal(f.run("state.undo"), null);
+  assert.equal(f.elements["undo-action"].hidden, true);
+});
+
+test("presets and saved filters persist without altering source text", async () => {
+  const stored = {};
+  const f = await fixture({stored});
+  f.elements.preset.value = "focus"; f.elements.preset.listeners.change(); await tick();
+  assert.equal(stored.preferences.textSize, 18);
+  assert.equal(stored.preferences.showMetadata, false);
+  f.elements["saved-name"].value = "Planning";
+  f.elements.search.value = "decision";
+  await f.elements["save-view"].listeners.click();
+  assert.equal(stored.savedViews[0].q, "decision");
+  assert.equal(stored.savedViews[0].name, "Planning");
+});
+
+test("since-visit rejects invalid dates and sends an existing valid visit", async () => {
+  const invalid = await fixture({stored: {lastVisit:"2026-09-30"}});
+  assert.equal(invalid.elements["since-visit"].disabled, true);
+  const f = await fixture({stored: {dashboardUrl:url,lastVisit:"2026-09-29T12:00:00Z"},fetch:async()=>snapshotResponse()});
+  f.elements["since-visit"].checked = true;
+  f.elements["since-visit"].listeners.change(); await tick();
+  assert.equal(new URL(f.calls[1].address).searchParams.get("since"), "2026-09-29T12:00:00Z");
+});
+
+test("standalone dashboard accepts the latest view after a delayed request", async () => {
+  const html = readFileSync(join(directory, "..", "discord_fix", "dashboard.html"), "utf8");
+  const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const requests = [deferred(), deferred()]; let index = 0;
+  const f = await fixture({html,js,fetch:()=>requests[index++].promise});
+  f.elements.navigation.listeners.click({target:{closest:()=>({dataset:{view:"Needs Reply"}})}});
+  requests[1].resolve(snapshotResponse({items:[{content:"Latest result",state:"open"}]})); await tick();
+  requests[0].resolve(snapshotResponse({items:[{content:"Obsolete result",state:"open"}]})); await tick();
+  assert.match(f.elements["message-rows"].textContent, /Latest result/);
+  assert.doesNotMatch(f.elements["message-rows"].textContent, /Obsolete result/);
+  assert.equal(f.calls[0].options.signal.aborted, true);
 });

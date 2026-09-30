@@ -85,6 +85,7 @@ class CompanionTests(unittest.TestCase):
 
     def test_ui_flow(self):
         import tkinter as tk
+        from unittest.mock import patch
 
         from discord_fix.__main__ import App
 
@@ -115,6 +116,17 @@ class CompanionTests(unittest.TestCase):
             app.act("complete")
             self.assertEqual(len(app.tree.get_children()), 0)
             root.update()
+            with patch("discord_fix.__main__.webbrowser.open", return_value=True):
+                url = app.open_web_dashboard()
+            self.assertEqual(
+                app.browser_pairing_window.title(), "Connect the English browser extension"
+            )
+            self.assertTrue(url.startswith("http://127.0.0.1:"))
+            first_window = app.browser_pairing_window
+            with patch("discord_fix.__main__.webbrowser.open", return_value=True):
+                self.assertEqual(app.open_web_dashboard(), url)
+            self.assertFalse(first_window.winfo_exists())
+            app.dashboard_server.stop()
             root.after_cancel(app.timer)
         finally:
             root.destroy()

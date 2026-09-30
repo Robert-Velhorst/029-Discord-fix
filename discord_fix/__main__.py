@@ -770,6 +770,43 @@ class App:
             if opened
             else f"Browserdashboard: {url}"
         )
+        previous = getattr(self, "browser_pairing_window", None)
+        if previous and previous.winfo_exists():
+            previous.destroy()
+        window = tk.Toplevel(self.root)
+        self.browser_pairing_window = window
+        window.title("Connect the English browser extension")
+        fit_window(window, "650x380", minimum=(420, 280))
+        frame = Scrollable(window)
+        frame.pack(fill="both", expand=True)
+        content = frame.content
+        ttk.Label(content, text="Connect your browser side panel", style="Title.TLabel").pack(
+            anchor="w", pady=12
+        )
+        ttk.Label(
+            content,
+            text="1. Load the browser-extension folder in Chrome or Edge using Load unpacked.\n2. Open the Discord Fix extension and paste the address below.\n3. Choose Connect and allow local access. Keep this desktop app open.",
+            wraplength=580,
+            justify="left",
+        ).pack(anchor="w", pady=8)
+        address = ttk.Entry(content)
+        address.insert(0, url)
+        address.configure(state="readonly")
+        address.pack(fill="x", pady=8)
+        feedback = tk.StringVar(
+            value="This private address expires when you close Discord Fix. Do not share it."
+        )
+
+        def copy_address():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(url)
+            feedback.set("Address copied. Paste it into the extension's Local dashboard URL field.")
+
+        ttk.Button(content, text="Copy private connection address", command=copy_address).pack(
+            anchor="w", pady=8
+        )
+        ttk.Label(content, textvariable=feedback, wraplength=580).pack(anchor="w", pady=8)
+        ttk.Button(content, text="Close", command=window.destroy).pack(anchor="w", pady=8)
         return url
 
     def invalidate_summary_windows(self):

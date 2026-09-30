@@ -25,7 +25,7 @@
     </header>
 
     <main id="top">
-      <p id="privacy-note" class="privacy-note">Read-only · stored on this device · Discord stays unchanged</p>
+      <p id="privacy-note" class="privacy-note">Local information and follow-ups · Discord stays unchanged</p>
       <p id="status" class="status" role="status" aria-live="polite">Loading settings…</p>
 
       <section id="connection" class="connection" aria-labelledby="connection-title">
@@ -44,11 +44,14 @@
         <button id="change-connection" class="text-button" type="button">Change connection</button>
         <section id="preferences" class="preferences" hidden aria-labelledby="preferences-title">
           <div class="preferences-heading"><h2 id="preferences-title">Display settings</h2><button id="disconnect" class="text-button" type="button">Clear connection</button></div>
+          <label class="setting-row" for="preset"><span><strong>Layout preset</strong></span><select id="preset" aria-label="Layout preset"><option value="custom">Custom</option><option value="focus">Focus</option><option value="compact">Compact</option><option value="context">Context</option></select></label>
+          <label class="setting-row" for="text-size"><span><strong>Message text size</strong></span><select id="text-size" aria-label="Message text size"><option value="12">Small</option><option value="14">Standard</option><option value="18">Large</option><option value="22">Extra large</option></select></label>
+          <label class="setting-row checkbox-row" for="show-metadata"><span><strong>Show author and time</strong></span><input id="show-metadata" type="checkbox"></label>
           <label class="setting-row" for="theme"><span><strong>Theme</strong><small>Side panel only</small></span>
-            <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select>
+            <select id="theme" aria-label="Theme"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select>
           </label>
           <label class="setting-row" for="density"><span><strong>Row spacing</strong><small>Space around each message</small></span>
-            <select id="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select>
+            <select id="density" aria-label="Row spacing"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select>
           </label>
           <label class="setting-row checkbox-row" for="show-counts"><span><strong>Show priority counts</strong><small>Counts at the top</small></span><input id="show-counts" type="checkbox"></label>
           <label class="setting-row checkbox-row" for="show-sources"><span><strong>Show source status</strong><small>Availability of connected sources</small></span><input id="show-sources" type="checkbox"></label>
@@ -76,8 +79,25 @@
           <button id="clear-search" type="button" aria-label="Clear search" hidden>×</button>
         </form>
 
+        <div class="filter-tools">
+          <label><input id="since-visit" type="checkbox"> Since last visit</label>
+          <label><input id="pinned-only" type="checkbox" disabled> Pinned conversations</label>
+          <button id="show-summary" class="secondary-button" type="button">Context summary</button>
+        </div>
+        <details class="saved-filters"><summary>Saved views</summary>
+          <label for="saved-view">Choose a saved view</label><select id="saved-view"><option value="">Choose a view</option></select>
+          <label for="saved-name">Name this view</label><input id="saved-name" maxlength="50" placeholder="e.g. Design follow-ups">
+          <button id="save-view" class="secondary-button" type="button">Save current view</button>
+          <button id="remove-view" class="text-button" type="button">Remove selected view</button>
+        </details>
+        <p id="setup-hint" class="empty-state" hidden>No sources yet. In the desktop app, import your Discord data package or connect an authorized server bot. An export contains your own sent messages; a bot sees only channels it can access.</p>
+        <div class="action-feedback"><p id="action-status" role="status" aria-live="polite"></p><button id="undo-action" class="secondary-button" type="button" hidden>Undo</button></div>
+        <button id="back-conversations" class="text-button" type="button" hidden>Back to conversations</button>
+
         <div class="section-heading"><h1 id="view-title">Your dashboard</h1><span id="result-count" class="result-count"></span></div>
         <section id="items" class="items" aria-label="Messages"></section>
+        <nav id="pagination" class="pagination" aria-label="Result pages" hidden><button id="previous-page" class="secondary-button" type="button">Previous</button><span id="page-label"></span><button id="next-page" class="secondary-button" type="button">Next</button></nav>
+        <section id="detail" class="detail" aria-label="Message context" hidden><button id="close-detail" class="text-button" type="button">Back to messages</button><div id="detail-content"></div></section>
         <details id="sources" class="sources" hidden>
           <summary>Source status <span id="source-count"></span></summary>
           <ul id="source-list"></ul>

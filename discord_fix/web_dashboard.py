@@ -1,4 +1,4 @@
-"""Loopback-only, read-only browser dashboard for the local Discord Fix database."""
+"""Loopback dashboard with read-only snapshots and explicit local follow-up actions."""
 
 import argparse
 import json
@@ -6,13 +6,12 @@ import secrets
 import sqlite3
 import threading
 import time
-from contextlib import closing
-from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from .importer import deep_link
+from .web_data import message_data, page_data, summary_data
+from .web_workflow import WorkflowConflict, apply_workflow
 
 ALLOWED_VIEWS = {
     "Overview": "1=1",
@@ -35,126 +34,11 @@ SOURCE_LABELS = {
 }
 
 
-def dashboard_data(database_path, view="Overview", search="", demo=False):
-    """Read a fresh snapshot without modifying message, workflow, or notification data."""
-    if view not in ALLOWED_VIEWS:
-        raise ValueError("Onbekende dashboardweergave.")
-    if len(search) > 160:
-        raise ValueError("De zoekopdracht is te lang.")
-
-    current = datetime.now(timezone.utc)
-    stamp = current.isoformat()
-    effective_state = (
-        "CASE WHEN state='later' AND until IS NOT NULL AND until<=? THEN 'open' ELSE state END"
-    )
-    database_uri = Path(database_path).resolve().as_uri() + "?mode=ro"
-    with closing(sqlite3.connect(database_uri, uri=True, timeout=5)) as database:
-        database.row_factory = sqlite3.Row
-        database.execute("PRAGMA query_only=ON")
-        database.execute("PRAGMA busy_timeout=5000")
-        with database:
-            database.execute("SELECT 1")
-
-        common_table = f"""
-            WITH normalized AS (
-                SELECT id, channel, channel_name, guild, content, search_text, timestamp, author,
-                    state, until, important, reply, deadline, deleted,
-                    source_id, {effective_state} AS effective_state
-                FROM messages
-            )
-        """
-        counts_row = database.execute(
-            common_table
-            + """
-            SELECT COUNT(*) AS total,
-                COALESCE(SUM(effective_state='open' AND important=1),0) AS important,
-                COALESCE(SUM(effective_state='open' AND reply=1),0) AS reply,
-                COALESCE(SUM(effective_state='later'),0) AS later,
-                COALESCE(SUM(NOT (effective_state='later' OR
-                    (effective_state='open' AND (important=1 OR reply=1)))),0) AS other
-            FROM normalized
-            """,
-            (stamp,),
-        ).fetchone()
-
-        clause = ALLOWED_VIEWS[view]
-        parameters = [stamp]
-        if search:
-            clause += " AND instr(search_text,?)>0"
-            parameters.append(search.casefold())
-        order = (
-            "CASE WHEN effective_state='open' AND important=1 THEN 0 "
-            "WHEN effective_state='open' AND reply=1 THEN 1 ELSE 2 END, timestamp DESC,id DESC"
-            if view == "Overview"
-            else "timestamp DESC,id DESC"
-        )
-        records = database.execute(
-            common_table
-            + f"""
-            SELECT * FROM normalized WHERE {clause}
-            ORDER BY {order} LIMIT 60
-            """,
-            parameters,
-        ).fetchall()
-
-        settings = {
-            row["key"]: json.loads(row["value"])
-            for row in database.execute("SELECT key,value FROM settings")
-        }
-        sync_interval = settings.get("sync_minutes", 5)
-        freshness = current - timedelta(minutes=max(15, sync_interval * 3))
-        source_rows = database.execute(
-            "SELECT kind,name,status,last_sync FROM sources ORDER BY name"
-        ).fetchall()
-
-    sources = []
-    for row in source_rows:
-        status = row["status"]
-        if status == "synced" and row["last_sync"]:
-            try:
-                if datetime.fromisoformat(row["last_sync"]) < freshness:
-                    status = "stale"
-            except (TypeError, ValueError):
-                status = "stale"
-        sources.append(
-            {
-                "kind": row["kind"],
-                "name": row["name"],
-                "status": status,
-                "label": SOURCE_LABELS.get(status, "Status onbekend"),
-                "last_sync": row["last_sync"],
-            }
-        )
-
-    items = []
-    for row in records:
-        record = dict(row)
-        items.append(
-            {
-                "id": record["id"],
-                "channel_name": record["channel_name"],
-                "author": record["author"],
-                "content": record["content"][:420],
-                "timestamp": record["timestamp"],
-                "state": record["effective_state"],
-                "important": bool(record["important"]),
-                "reply": bool(record["reply"]),
-                "deadline": record["deadline"],
-                "deleted": bool(record["deleted"]),
-                "url": None if demo else deep_link(record),
-            }
-        )
-
-    return {
-        "view": view,
-        "demo": bool(demo),
-        "generated_at": stamp,
-        "counts": {
-            key: int(counts_row[key]) for key in ("total", "important", "reply", "later", "other")
-        },
-        "items": items,
-        "sources": sources,
-    }
+def dashboard_data(database_path, view="Overview", search="", demo=False, **options):
+    payload = page_data(database_path, view, search, demo, **options)
+    for source in payload["sources"]:
+        source["label"] = SOURCE_LABELS.get(source["status"], "Status onbekend")
+    return payload
 
 
 class DashboardServer:
@@ -164,6 +48,9 @@ class DashboardServer:
         self.database_path = str(Path(database_path).resolve())
         self.demo = bool(demo)
         self.token = secrets.token_urlsafe(32)
+        self.write_nonce = secrets.token_urlsafe(32)
+        self.workflow_lock = threading.Lock()
+        self.undo = {}
         self.server = None
         self.thread = None
         self.url = None
@@ -199,12 +86,14 @@ class DashboardServer:
                 self.wfile.write(body)
 
             def _reject(self, status=404):
-                self._send(status, b"Niet gevonden.", "text/plain; charset=utf-8")
+                self._send(status, b"Not found.", "text/plain; charset=utf-8")
 
             def do_GET(self):
                 host = self.headers.get("Host", "").lower()
-                host_name = host.rsplit(":", 1)[0] if ":" in host else host
-                if host_name not in {"127.0.0.1", "localhost"}:
+                if host not in {
+                    urlsplit(owner.url).netloc,
+                    urlsplit(owner.url).netloc.replace("127.0.0.1", "localhost"),
+                }:
                     self._reject(403)
                     return
 
@@ -217,7 +106,7 @@ class DashboardServer:
                 if resource in ("", "index.html"):
                     self._send(200, owner.html, "text/html; charset=utf-8")
                     return
-                if resource != "api/dashboard":
+                if resource not in {"api/dashboard", "api/message", "api/summaries"}:
                     self._reject()
                     return
 
@@ -225,27 +114,141 @@ class DashboardServer:
                 view = params.get("view", ["Overview"])[0]
                 search = params.get("q", [""])[0]
                 try:
-                    payload = dashboard_data(owner.database_path, view, search, owner.demo)
+                    if resource == "api/message":
+                        payload = message_data(
+                            owner.database_path, params.get("id", [""])[0], owner.demo
+                        )
+                    elif resource == "api/summaries":
+                        payload = summary_data(
+                            owner.database_path,
+                            params.get("scope", ["personal"])[0],
+                            params.get("target", ["*"])[0],
+                            int(params.get("offset", ["0"])[0]),
+                            demo=owner.demo,
+                        )
+                    else:
+                        payload = dashboard_data(
+                            owner.database_path,
+                            view,
+                            search,
+                            owner.demo,
+                            offset=int(params.get("offset", ["0"])[0]),
+                            anchor=int(params["anchor"][0]) if "anchor" in params else None,
+                            conversation=params.get("conversation", [""])[0],
+                            since=params.get("since", [""])[0],
+                            pinned=params["pins"][0].split(",")
+                            if params.get("pins", [""])[0]
+                            else []
+                            if "pins" in params
+                            else None,
+                        )
+                        payload["workflow"] = {
+                            "enabled": not owner.demo,
+                            "nonce": owner.write_nonce if not owner.demo else "",
+                        }
                 except ValueError as exc:
                     body = json.dumps({"error": str(exc)}, ensure_ascii=False).encode()
                     self._send(400, body, "application/json; charset=utf-8")
                     return
                 except (OSError, sqlite3.Error, json.JSONDecodeError):
-                    body = b'{"error":"Lokale gegevens zijn tijdelijk niet beschikbaar."}'
+                    body = b'{"error":"Local data is temporarily unavailable."}'
                     self._send(503, body, "application/json; charset=utf-8")
                     return
                 body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
                 self._send(200, body, "application/json; charset=utf-8")
 
             def do_POST(self):
+                parsed = urlsplit(self.path)
+                if parsed.path != f"/{owner.token}/api/workflow":
+                    self.send_response(405)
+                    self.send_header("Allow", "GET")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                origin = self.headers.get("Origin", "")
+                try:
+                    origin_url = urlsplit(origin)
+                except ValueError:
+                    self._reject(403)
+                    return
+                local_origins = {
+                    owner.url.split("/" + owner.token)[0],
+                    owner.url.split("/" + owner.token)[0].replace("127.0.0.1", "localhost"),
+                }
+                extension_origin = (
+                    origin_url.scheme == "chrome-extension"
+                    and len(origin_url.netloc) == 32
+                    and all(c in "abcdefghijklmnop" for c in origin_url.netloc)
+                    and not origin_url.path
+                )
+                if (
+                    owner.demo
+                    or (origin and origin not in local_origins and not extension_origin)
+                    or not secrets.compare_digest(
+                        self.headers.get("X-Discord-Fix-Nonce", ""), owner.write_nonce
+                    )
+                    or self.headers.get("Host")
+                    not in {urlsplit(value).netloc for value in local_origins}
+                ):
+                    self._reject(403)
+                    return
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if (
+                        not 1 <= length <= 4096
+                        or self.headers.get("Content-Type", "").split(";")[0] != "application/json"
+                    ):
+                        raise ValueError("Use a small JSON action request.")
+                    self.connection.settimeout(5)
+                    payload = json.loads(self.rfile.read(length))
+                    if not isinstance(payload, dict):
+                        raise ValueError("Invalid action request.")
+                    with owner.workflow_lock:
+                        ticket = payload.get("undo", "")
+                        if not isinstance(ticket, str):
+                            raise ValueError("Invalid undo ticket.")
+                        previous = owner.undo.get(ticket)
+                        changed = apply_workflow(owner.database_path, payload, previous)
+                        if payload.get("action") == "undo":
+                            owner.undo.pop(ticket, None)
+                            result = {
+                                "id": changed["id"],
+                                "revision": changed["revision"],
+                                "undo": "",
+                            }
+                        else:
+                            ticket = secrets.token_urlsafe(24)
+                            owner.undo[ticket] = changed
+                            if len(owner.undo) > 500:
+                                owner.undo.pop(next(iter(owner.undo)))
+                            result = {
+                                "id": changed["id"],
+                                "revision": changed["revision"],
+                                "undo": ticket,
+                            }
+                    self._send(200, json.dumps(result).encode(), "application/json")
+                except WorkflowConflict as exc:
+                    self._send(409, json.dumps({"error": str(exc)}).encode(), "application/json")
+                except (ValueError, TypeError, KeyError):
+                    self._send(
+                        400, b'{"error":"Invalid local action request."}', "application/json"
+                    )
+                except (OSError, sqlite3.Error):
+                    self._send(
+                        503,
+                        b'{"error":"Local data is temporarily unavailable."}',
+                        "application/json",
+                    )
+
+            def _unsupported_write(self):
                 self.send_response(405)
                 self.send_header("Allow", "GET")
                 self.send_header("Content-Length", "0")
                 self.end_headers()
 
-            do_PUT = do_POST
-            do_PATCH = do_POST
-            do_DELETE = do_POST
+            do_PUT = _unsupported_write
+            do_PATCH = _unsupported_write
+            do_DELETE = _unsupported_write
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.server.daemon_threads = True
