@@ -26,11 +26,17 @@ Opening Discord's registration page in the available Chrome session redirected t
 
 Social SDK provisional accounts are scoped to a game's authentication and social features. Discord describes them as working only with that game and being mergeable into a full account. They are not a documented substitute for registering an account to use Discord's normal client. [Provisional accounts](https://docs.discord.com/developers/discord-social-sdk/development-guides/provisional-accounts/overview)
 
-## Prepared authorization inquiry — not sent
+## Submitted authorization inquiry — response pending
 
-Suggested destination: Discord Developer Support. The official Social SDK overview links to that support route; availability of support does not establish approval. No ticket or message has been submitted.
+Discord Developer Support received [ticket #68755960](https://support-dev.discord.com/hc/nl/requests/68755960) on 1 October 2026. The signed-in ticket page displayed “Uw aanvraag is verzonden,” the submitted English inquiry, and status **Open**. It was submitted under **Developer Compliance > Other**, whose displayed description includes questions about developer terms and policies. No application ID was provided because this inquiry concerns a proposed browser presentation extension. Submission and account activation do not establish Discord's approval of the proposed integration.
 
-On 1 October 2026, the linked [official Developer Support page](https://support-dev.discord.com/hc/en-us/requests/new?tf_12094679025047=field_value_developer_offering_social_sdk&ticket_form_id=12094720423319) was inspected in Chrome. It requires signing into a Discord support account before submitting a ticket. The available Discord web-client session did not provide a signed-in support session. No sign-in, account creation, form entry, or submission was performed. The page was left available for the account owner's handoff; authorization to send this specific inquiry is pending. The displayed Social SDK destination is the route linked by the official overview, not confirmation that it is the correct category for a presentation-extension permission question. Reassess available categories after authorized sign-in rather than inventing an application ID or account.
+The support account was registered with the owner's authorization; the owner completed the password setup. The subsequent signed-in support page was verified before submitting the authorized inquiry. Account credentials, activation links, and private contact details are excluded from this repository. This support account is separate from a normal Discord client account.
+
+### Follow-up record
+
+- **1 October 2026:** Inquiry submitted and receipt verified. Last processed event: the owner's initial inquiry. No substantive Discord response or authorization has been received in the verified ticket state.
+- **1 October 2026:** At the owner's request, an hourly follow-up was activated in the existing Codex chat. It checks this ticket and its corresponding email replies, continues routine correspondence, and processes new information into the product. It reports meaningful changes or required owner actions and remains quiet when there is no actionable change. Checks depend on the app's scheduler and available account access; the hourly schedule is not an instant notification guarantee.
+- On each meaningful response, add a dated entry identifying the response processed, its implications, and any reply or implementation completed. Avoid duplicate replies. An acknowledgement does not establish permission. Implementation of the requested shell still requires resolving the supported and authorized route in the product specification.
 
 > We are developing Discord Fix, a local browser accessibility and focus tool. Its existing companion presents information from user-provided exports or administrator-authorized bot channels.
 >
