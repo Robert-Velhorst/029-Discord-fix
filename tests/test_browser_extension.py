@@ -45,6 +45,14 @@ class BrowserExtensionTests(unittest.TestCase):
         self.assertIn('class="visually-hidden" for="search"', page)
         self.assertIn('aria-label="Display settings"', page)
         self.assertIn('aria-label="Refresh dashboard"', page)
+        self.assertIn('class="native-settings"', page)
+        self.assertIn(
+            "Discord Developer Support says there is no supported integration point", page
+        )
+        self.assertIn("Chat Font Scaling", page)
+        self.assertIn("Message Group Spacing", page)
+        self.assertIn('rel="noopener noreferrer"', page)
+        self.assertIn("support.discord.com/hc/en-us/articles/207260127", page)
         self.assertIn('new Intl.DateTimeFormat("en-GB"', script)
         self.assertIn("SOURCE_STATUS_TITLES[source.status]", script)
         self.assertNotIn("source.label", script)

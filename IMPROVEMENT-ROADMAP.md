@@ -1,6 +1,6 @@
 # Discord Fix — Improvement Roadmap
 
-Assessment date: 30 September 2026. Inspected baseline: `ebf2a203101166009cf5413679b8229c487dafe4`.
+Assessment date: 17 October 2026. Inspected baseline for the historical gap table: `ebf2a203101166009cf5413679b8229c487dafe4`.
 
 The gap table and estimates below describe the inspected baseline. Effort and impact are planning judgments, not measured user outcomes. Implementation status for the subsequent build is recorded here.
 
@@ -14,7 +14,7 @@ Added in 0.3.0: optional Windows native pairing with an exact extension-origin a
 
 Added in 0.3.1: view buttons wrap within narrow panels, and text buttons have a 28-pixel minimum height. A synthetic Chrome preview was measured at actual CSS widths of 320, 375, 768, and 1440 pixels. Saved screenshots show the navigation improvement. Settings and full message context also fit at 320 pixels with extra-large message text. See `DEVELOPMENT.md` for the bounded keyboard checks and preview limitations.
 
-Still open: a genuine Discord overlay, actual unpacked-extension/native-host/permission/Edge acceptance and installed-panel sizing, screen-reader acceptance, authorized real-source/provider validation, measured user outcomes, and signed/store distribution. Installation confirmation is pending; native registration has not been performed. Publication/signing has not been requested. Do not treat companion progress as completion of the overlay.
+Still open: a genuine Discord overlay is not implemented, and Discord Developer Support has said there is no public/supported client-UI integration point and that modifying the client is not permitted under its Terms. Reconsider only if Discord later documents and permits a route. Actual unpacked-extension/native-host/permission/Edge acceptance and installed-panel sizing, screen-reader acceptance, authorized real-source/provider validation, measured user outcomes, and signed/store distribution also remain open. Native registration has not been performed. Publication/signing has not been requested. Do not treat companion progress as completion of the overlay.
 
 ## Product direction to resolve
 
@@ -22,7 +22,7 @@ Robert's original request was an installable, customizable shell over Discord. T
 
 Keep that gap explicit. Before promising a Discord UI overlay, assess the exact proposed interaction, permissions, maintenance burden, and permitted integration route. Discord's terms restrict unauthorized software designed to modify the services and software modifications/reverse engineering, with stated exceptions. This is an integration constraint to investigate, not a claim that every possible overlay has been individually assessed. Do not obtain personal account tokens or silently broaden the current extension's access. See [Discord's terms](https://discord.com/terms) and [its self-bot policy](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots).
 
-The [integration assessment](OVERLAY-INTEGRATION-ASSESSMENT.md) now records the inspected Activity/Embedded App SDK/Social SDK routes, a bounded read-only live UI observation, and an unsent inquiry about the proposed browser presentation extension. No inspected route established permission to replace Discord's existing layout.
+The [integration assessment](OVERLAY-INTEGRATION-ASSESSMENT.md) records the inspected Activity/Embedded App SDK/Social SDK routes, bounded read-only UI observations, and the complete Developer Support exchange. Discord's direct technical response did not authorize or identify a supported route to replace or modify the existing client layout. The original shell remains an explicit unmet requirement; do not present the companion as equivalent delivery.
 
 ## Verified gaps and proposed outcomes
 
@@ -86,4 +86,4 @@ Run maintainability and privacy checks alongside product tests. Keep interaction
 
 ## Immediate next step
 
-The detail flow, pagination, local workflow actions, and conversation grouping are implemented. Complete the pending actual browser installation and pairing acceptance with synthetic data, then validate authorized real sources. Resolve the documented integration route for the original shell independently; companion acceptance does not close that gap.
+The detail flow, pagination, local workflow actions, and conversation grouping are implemented. Complete actual browser installation and pairing acceptance with synthetic data, then validate authorized real sources. The original shell cannot proceed through an undocumented client modification: Discord's current answer is that no supported integration route exists. Companion acceptance does not close that gap; reconsider the shell only if Discord later documents and permits a route.

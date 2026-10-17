@@ -53,7 +53,7 @@
       body { margin: 0; min-width: 320px; min-height: 100vh; }
       button, input { font: inherit; }
       button { color: inherit; }
-      button:focus-visible, a:focus-visible, input:focus-visible {
+      button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible {
         outline: 3px solid var(--focus);
         outline-offset: 2px;
       }
@@ -233,6 +233,11 @@
       .dot-later { background: var(--accent); }
       .privacy-note { display: flex; align-items: flex-start; gap: 10px; color: var(--muted); font-size: 12px; line-height: 1.5; }
       .privacy-note svg { width: 18px; height: 18px; flex: 0 0 auto; }
+      .discord-display-help summary { color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer; }
+      .discord-display-help p, .discord-display-help ul { color: var(--muted); font-size: 12px; line-height: 1.55; }
+      .discord-display-help p { margin: 10px 0; }
+      .discord-display-help ul { display: grid; gap: 7px; margin: 0; padding-left: 19px; }
+      .discord-display-help a { color: var(--accent); text-underline-offset: 2px; }
 
       @media (max-width: 1280px) {
         .shell { grid-template-columns: 62px 190px minmax(420px, 1fr); }
@@ -325,7 +330,7 @@
 
         <div class="intro">
           <h1 id="page-title">Jouw Discord-overzicht</h1>
-          <p class="disclosure" id="disclosure">Lokaal overzicht · alleen-lezen</p>
+          <p class="disclosure" id="disclosure">Lokaal overzicht · Discord-berichten blijven ongewijzigd</p>
         </div>
 
         <section class="metrics" aria-label="Tellingen">
@@ -376,8 +381,19 @@
         </section>
         <section class="side-section privacy-note" aria-label="Privacy">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5m0-8h.01" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-          <span id="privacy-note">Gegevens blijven op deze computer. Dashboard is alleen-lezen.</span>
+          <span id="privacy-note">Geen Discord-berichten worden verstuurd of gewijzigd. Volgacties passen alleen de lokale Discord Fix-status aan.</span>
         </section>
+        <details class="side-section discord-display-help">
+          <summary>Discord-weergave instellen</summary>
+          <p>Discord Fix past Discords interface niet aan. Developer Support zegt dat er geen ondersteund integratiepunt is om de clientweergave te wijzigen. Gebruik hiervoor Discords eigen instellingen:</p>
+          <ul>
+            <li><strong>Tekst groter of kleiner:</strong> User Settings → Appearance → Chat Font Scaling. Browserzoom schaalt de hele pagina.</li>
+            <li><strong>Navigatieruimte:</strong> User Settings → Appearance → UI Density (desktop: Compact, Default of Spacious).</li>
+            <li><strong>Berichtdichtheid:</strong> Appearance → Message Spacing → Chat Message Display. Compact verbergt gebruikersiconen.</li>
+            <li><strong>Minder beweging:</strong> Appearance → Accessibility → Reduced Motion.</li>
+          </ul>
+          <p><a href="https://support.discord.com/hc/en-us/articles/207260127-How-to-Change-Discord-Color-Themes-and-Customize-Appearance-Settings" target="_blank" rel="noopener noreferrer">Discord Appearance-gids</a> · <a href="https://support.discord.com/hc/en-us/articles/1500010454681-Accessibility-Settings-Tab" target="_blank" rel="noopener noreferrer">Discord Accessibility-gids</a></p>
+        </details>
       </aside>
     </div>
 
@@ -556,10 +572,10 @@
             document.getElementById("page-label").textContent = `Pagina ${Math.floor(state.offset / data.pagination.limit) + 1} van ${Math.max(1, Math.ceil(data.pagination.total / data.pagination.limit))}`;
             document.getElementById("disclosure").textContent = data.demo
               ? "Voorbeeldgegevens · lokaal overzicht"
-              : "Lokaal overzicht · alleen-lezen";
+              : "Lokaal overzicht · Discord-berichten blijven ongewijzigd";
             document.getElementById("privacy-note").textContent = data.demo
               ? "Dit zijn synthetische voorbeeldgegevens; er is geen Discord-account gekoppeld."
-              : "Gegevens blijven op deze computer. Dashboard is alleen-lezen.";
+              : "Geen Discord-berichten worden verstuurd of gewijzigd. Volgacties passen alleen de lokale Discord Fix-status aan.";
             document.getElementById("connection-label").textContent = data.demo ? "Voorbeeldgegevens" : "Lokale gegevens";
             if (state.view === "Conversations" && !state.conversation) renderGroups(data.groups); else renderItems(data.items);
             renderSources(data.sources);

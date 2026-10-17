@@ -202,9 +202,9 @@ If Discord grants broader communication access:
 - reduce dependence on server-by-server bot installation;
 - synchronize read, reply, and completion state where officially supported.
 
-### Phase 3: Client-level integration only with authorization
+### Phase 3: Client-level integration is not currently supported
 
-Only explore a Discord client replacement or client-level UI integration if Discord explicitly supports and authorizes that specific approach. Do not implement an injected overlay, reskin, or layout modification as a workaround. If no authorized route exists, Discord Fix remains a separate companion. Mobile companion applications may follow after the desktop architecture and interaction model are proven.
+On 16 October 2026, Discord Developer Support stated that it offers no public or supported integration point for third-party apps to change the Discord client's interface, and that modifying the client itself is not permitted under its Terms of Service. Discord Fix therefore does not inject into, reskin, or change the Discord client. The extension may explain and link to Discord's own Appearance and Accessibility settings; these are user-operated controls and do not satisfy the original customizable-shell request. Reconsider client-level integration only if Discord later documents and permits a specific route. See the dated [integration assessment](OVERLAY-INTEGRATION-ASSESSMENT.md).
 
 ## Phase 1 functional requirements
 
