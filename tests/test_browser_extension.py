@@ -46,7 +46,9 @@ class BrowserExtensionTests(unittest.TestCase):
         self.assertIn('aria-label="Display settings"', page)
         self.assertIn('aria-label="Refresh dashboard"', page)
         self.assertIn('class="native-settings"', page)
-        self.assertIn("Discord Developer Support says there is no supported integration point", page)
+        self.assertIn(
+            "Discord Developer Support says there is no supported integration point", page
+        )
         self.assertIn("Chat Font Scaling", page)
         self.assertIn("Message Group Spacing", page)
         self.assertIn('rel="noopener noreferrer"', page)
