@@ -114,5 +114,5 @@ The project also contains a GitHub Actions workflow at `.github/workflows/test.y
 - [Development and verification notes](DEVELOPMENT.md)
 - [Windows user guide — Dutch](USER-GUIDE.nl.md)
 - [Browser extension guide — English](BROWSER-EXTENSION.md)
-- [Live Discord UI observations](DISCORD-UI-RESEARCH.md)
+- [Discord UI research, public complaints, and observations](DISCORD-UI-RESEARCH.md)
 - [Improvement plan and acceptance gaps](IMPROVEMENT-ROADMAP.md)

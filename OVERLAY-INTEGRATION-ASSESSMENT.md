@@ -24,6 +24,8 @@ The original request for a customizable shell is not fulfilled. The current safe
 
 Opening Discord's registration page in the available Chrome session redirected to the authenticated Friends page. No new account was created, no credentials were entered, and account ownership was not verified. Read-only observation found several competing navigation areas, promotional destinations, a resizable sidebar, and a central friends view. This single page is not evidence that every Discord UI problem has been inspected. No private conversation was opened; no account, privacy, or voice settings were changed. Private profile/contact details and the page screenshot are not included here.
 
+On 17 October 2026, an isolated unauthenticated ChatGPT browser tab showed Discord's public registration form. It requires an email, display name, username, password, date of birth, and agreement to the Terms of Service and Privacy Policy before account creation. No fields were entered, no agreement was accepted, and no account was submitted. Completing those steps requires Robert's own identity details and his decision to accept Discord's terms; the registration form itself did not grant access to the logged-in client.
+
 Social SDK provisional accounts are scoped to a game's authentication and social features. Discord describes them as working only with that game and being mergeable into a full account. They are not a documented substitute for registering an account to use Discord's normal client. [Provisional accounts](https://docs.discord.com/developers/discord-social-sdk/development-guides/provisional-accounts/overview)
 
 ## Submitted authorization inquiry — authorization unresolved
