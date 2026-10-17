@@ -294,7 +294,7 @@ class DashboardServer:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Lokaal, alleen-lezen Discord Fix-dashboard")
+    parser = argparse.ArgumentParser(description="Lokaal Discord Fix-dashboard")
     parser.add_argument("--database", required=True, help="Pad naar discord-fix.sqlite")
     parser.add_argument("--demo", action="store_true", help="Toon een voorbeeldgegevensmelding")
     args = parser.parse_args()

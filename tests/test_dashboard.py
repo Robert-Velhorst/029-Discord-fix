@@ -107,6 +107,8 @@ class DashboardTests(unittest.TestCase):
                 self.assertIn("Discord-weergave instellen", page)
                 self.assertIn("geen ondersteund integratiepunt", page)
                 self.assertIn("Chat Font Scaling", page)
+                self.assertIn("Volgacties passen alleen de lokale Discord Fix-status aan", page)
+                self.assertNotIn("Dashboard is alleen-lezen", page)
                 self.assertIn('rel="noopener noreferrer"', page)
                 self.assertEqual(response.headers["Cache-Control"], "no-store, max-age=0")
                 self.assertNotIn("Access-Control-Allow-Origin", response.headers)

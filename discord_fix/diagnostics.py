@@ -61,7 +61,7 @@ def run(report_path):
                     raise RuntimeError("Voorbeeldberichten mogen geen Discord-links bevatten.")
             finally:
                 dashboard.stop()
-            result["checks"].append("Local read-only browser dashboard")
+            result["checks"].append("Local synthetic browser dashboard")
             for panel in (
                 panels.sources_panel,
                 panels.settings_panel,
