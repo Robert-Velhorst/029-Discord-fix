@@ -56,6 +56,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .icon-button svg { width: 19px; height: 19px; }
 main { padding: 0 16px 24px; }
 .privacy-note { margin: 13px 0 17px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.native-settings { margin: 0 0 15px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 11px; line-height: 1.55; }
+.native-settings summary { color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; }
+.native-settings-note { margin: 10px 0; }
+.native-settings ul { display: grid; gap: 7px; margin: 0; padding-left: 18px; }
+.native-settings li strong { color: var(--text); }
+.native-settings-links { display: flex; flex-wrap: wrap; gap: 10px; margin: 11px 0 0; }
+.native-settings a { color: var(--accent); text-underline-offset: 2px; }
 .connection { padding: 16px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
 h1, h2, p { margin-top: 0; }
 .connection h1 { margin-bottom: 8px; font-size: 18px; line-height: 1.25; letter-spacing: -.025em; }

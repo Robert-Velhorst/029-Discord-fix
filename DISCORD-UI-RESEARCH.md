@@ -2,7 +2,9 @@
 
 ## Access and method
 
-Inspected navigation, Appearance, and Accessibility at [Discord](https://discord.com/channels/@me) in an existing logged-in Chrome session. Opening registration redirected to that session. No account was needed or created. No account preferences were changed, private message contents opened, messages sent, or account information exported. Personal names, IDs, and session credentials are absent from this report.
+On 30 September 2026, navigation, Appearance, and Accessibility were inspected at [Discord](https://discord.com/channels/@me) in an existing logged-in Chrome session. Opening registration redirected to that session. No account was needed or created. No account preferences were changed, private message contents opened, messages sent, or account information exported. Personal names, IDs, and session credentials are absent from this report.
+
+On 17 October 2026, Discord Developer Support's 16 October reply was read in full through the connected Gmail account. It said there is no public/supported integration point to alter the client UI and pointed users to Discord's built-in Appearance and Accessibility settings. The current session could not repeat a live client inspection: it has no Discord user account, and the browser research service had exhausted its free minutes. No account was created or paid plan purchased. The extension's new settings guide is based on Discord's public support pages, not on a new signed-in inspection.
 
 These are dated observations of one web session. They are not an exhaustive complaint inventory, a mobile/desktop audit, representative user research, or proof that every account sees the same experiments.
 

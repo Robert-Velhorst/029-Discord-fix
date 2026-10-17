@@ -15,7 +15,7 @@ Discord Fix is a Windows-first companion that helps people make sense of Discord
 
 Discord Fix is a companion, **not a replacement Discord client or a full-screen overlay**. The browser extension does not inject into, inspect, or change Discord pages. It reads the local dashboard and saves your personal follow-up choices to Discord Fix. Those choices never change or send Discord messages.
 
-The originally requested customizable Discord shell remains open. The [integration assessment](OVERLAY-INTEGRATION-ASSESSMENT.md) records the submitted support inquiry and subsequent replies. On 13 October 2026, Discord declined to provide individual compliance advice; it did not grant approval or identify a supported integration route. A technical follow-up was sent on 15 October. The requested overlay remains incomplete.
+Discord Developer Support answered the technical question on 16 October 2026: it offers no public or supported integration point for third-party apps to change the Discord client UI and says modifying the client itself is not permitted under its Terms. Discord Fix therefore does not inject into or alter Discord. The extension now includes a guide to Discord's own Appearance and Accessibility settings; this is a companion aid, not the requested customizable shell. See the [dated integration assessment](OVERLAY-INTEGRATION-ASSESSMENT.md) and [product specification](PRODUCT-SPECIFICATION.md).
 
 ## Run from source on Windows
 
