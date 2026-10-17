@@ -104,6 +104,10 @@ class DashboardTests(unittest.TestCase):
                 page = response.read().decode("utf-8")
                 self.assertIn("Jouw Discord-overzicht", page)
                 self.assertIn("Voorbeeldgegevens", page)
+                self.assertIn("Discord-weergave instellen", page)
+                self.assertIn("geen ondersteund integratiepunt", page)
+                self.assertIn("Chat Font Scaling", page)
+                self.assertIn('rel="noopener noreferrer"', page)
                 self.assertEqual(response.headers["Cache-Control"], "no-store, max-age=0")
                 self.assertNotIn("Access-Control-Allow-Origin", response.headers)
 
