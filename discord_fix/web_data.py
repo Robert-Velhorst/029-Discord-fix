@@ -63,7 +63,7 @@ def sources_from(database, settings, current):
                 date = datetime.fromisoformat(source["last_sync"] or "")
                 if date < current - timedelta(minutes=max(15, settings["sync_minutes"] * 3)):
                     source["status"] = "stale"
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 source["status"] = "stale"
         source["coverage"] = (
             "Own sent messages from an export; other people's replies are not included."
@@ -416,7 +416,7 @@ def summary_data(database_path, scope="personal", target="*", offset=0, demo=Fal
                     raise ValueError("Saved evidence changed.")
             for start in range(0, len(entries), 500):
                 validate_entries(entries[start : start + 500], [evidence[key] for key in hashes])
-        except (ValueError, TypeError, KeyError):
+        except ValueError, TypeError, KeyError:
             return {"entries": [], "available": False, "total": 0, "needs_refresh": True}
         page = []
         for entry in entries[offset : offset + 30]:

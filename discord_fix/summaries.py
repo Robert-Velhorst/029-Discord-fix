@@ -191,7 +191,7 @@ class ChatProvider:
             for entry in entries:
                 entry["basis"] = "AI-interpretatie; controleer de bron"
             return validate_entries(entries, evidence_rows if evidence_rows is not None else rows)
-        except (KeyError, IndexError, TypeError, json.JSONDecodeError):
+        except KeyError, IndexError, TypeError, json.JSONDecodeError:
             raise ValueError(
                 "Provider leverde geen geldige gestructureerde samenvatting."
             ) from None

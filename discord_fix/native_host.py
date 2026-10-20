@@ -97,7 +97,7 @@ def serve(input_stream, output_stream, origin, directory, lookup=discover):
             raise ValueError("Unsupported pairing request.")
         url = connection_url(lookup(vault))
         result = {"ok": True, "url": url, "protocol": 1}
-    except (OSError, ValueError, RuntimeError, TypeError):
+    except OSError, ValueError, RuntimeError, TypeError:
         result = {
             "ok": False,
             "error": "Pairing unavailable. Open Browserdashboard, check the host registration, or paste its private address manually.",

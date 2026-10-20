@@ -31,12 +31,12 @@ def request_json(url, headers=None, payload=None, timeout=30):
     except urllib.error.HTTPError as exc:
         try:
             body = json.loads(exc.read(65536))
-        except (ValueError, UnicodeError):
+        except ValueError, UnicodeError:
             body = {}
         finally:
             exc.close()
         raise HttpFailure(exc.code, dict(exc.headers), body) from None
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except urllib.error.URLError, TimeoutError, OSError:
         raise RuntimeError(
             "Verbinding mislukt of verlopen. Controleer netwerk en provider."
         ) from None
