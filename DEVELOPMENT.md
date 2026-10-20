@@ -4,7 +4,7 @@ The specification is `PRODUCT-SPECIFICATION.md`; setup is in `README.md`. Deskto
 
 ## Run and verify
 
-- Source run: `python -m discord_fix` (Python 3.11+, Tcl/Tk, SQLite FTS5).
+- Source run: `python -m discord_fix` (Python 3.15+, Tcl/Tk, SQLite FTS5).
 - Windows package: `DiscordFix.exe`, Python bundled by PyInstaller.
 - Browser companion: unpacked Manifest V3 extension in `browser-extension/`; local development package can be created with `Package-Browser-Extension.ps1`.
 - Tests: `python -W error::ResourceWarning -m unittest discover -s tests -v`.
