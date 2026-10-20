@@ -165,7 +165,7 @@ class DashboardServer:
                     body = json.dumps({"error": str(exc)}, ensure_ascii=False).encode()
                     self._send(400, body, "application/json; charset=utf-8")
                     return
-                except (OSError, sqlite3.Error, json.JSONDecodeError):
+                except OSError, sqlite3.Error, json.JSONDecodeError:
                     body = b'{"error":"Local data is temporarily unavailable."}'
                     self._send(503, body, "application/json; charset=utf-8")
                     return
@@ -244,11 +244,11 @@ class DashboardServer:
                     self._send(200, json.dumps(result).encode(), "application/json")
                 except WorkflowConflict as exc:
                     self._send(409, json.dumps({"error": str(exc)}).encode(), "application/json")
-                except (ValueError, TypeError, KeyError):
+                except ValueError, TypeError, KeyError:
                     self._send(
                         400, b'{"error":"Invalid local action request."}', "application/json"
                     )
-                except (OSError, sqlite3.Error):
+                except OSError, sqlite3.Error:
                     self._send(
                         503,
                         b'{"error":"Local data is temporarily unavailable."}',
@@ -276,7 +276,7 @@ class DashboardServer:
             try:
                 publish(self.pairing_vault, self.url, self.session_id)
                 self.pairing_ready = True
-            except (OSError, RuntimeError, ValueError):
+            except OSError, RuntimeError, ValueError:
                 self.pairing_ready = False
         return self.url
 

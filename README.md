@@ -19,9 +19,9 @@ Discord Developer Support answered the technical question on 16 October 2026: it
 
 ## Run from source on Windows
 
-Requirements: Python 3.11 or later and a Windows installation that includes Tcl/Tk. No third-party Python packages are needed to run the source version.
+Requirements: Python 3.15 or later and a Windows installation that includes Tcl/Tk. No third-party Python packages are needed to run the source version.
 
-1. Install Python 3.11 or later with Tcl/Tk enabled.
+1. Install Python 3.15 or later with Tcl/Tk enabled.
 2. Clone the repository and start Discord Fix:
 
    ```powershell

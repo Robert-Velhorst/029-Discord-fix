@@ -37,7 +37,7 @@ def clear(vault, session_id):
         current = json.loads(vault.read(SESSION_KEY) or "{}")
         if isinstance(current, dict) and current.get("session_id") == session_id:
             vault.forget(SESSION_KEY)
-    except (OSError, ValueError, RuntimeError):
+    except OSError, ValueError, RuntimeError:
         # A stale encrypted record cannot pair without a live matching handshake.
         return
 
